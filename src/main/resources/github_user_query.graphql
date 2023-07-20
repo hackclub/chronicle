@@ -1,0 +1,56 @@
+ {
+  search(query: "%s", type: USER, first: 1) {
+    edges {
+      node {
+        ... on User {
+          id
+          bio
+          company
+          topRepositories(last: 100, orderBy: {field: PUSHED_AT, direction: DESC}) {
+            edges {
+              node {
+                name
+                description
+                homepageUrl
+                isFork
+                isInOrganization
+                isEmpty
+                pushedAt
+              }
+            }
+          }
+          contributionsCollection {
+            pullRequestContributions(last: 100, orderBy: {direction: DESC}) {
+              nodes {
+                pullRequest {
+                  createdAt
+                  repository {
+                    id
+                    owner {
+                      id
+                      login
+                    }
+                    name
+                    primaryLanguage {
+                      name
+                    }
+                  }
+                }
+              }
+              totalCount
+            }
+          }
+          issues(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+            edges {
+              node {
+                title
+                body
+              }
+            }
+            totalCount
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+PUT search-users/_settings
+{
+    "index.mapping.total_fields.limit": 5000
+}

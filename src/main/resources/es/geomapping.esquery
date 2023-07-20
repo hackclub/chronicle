@@ -1,0 +1,9 @@
+PUT search-users/_mapping
+{
+    "dynamic": "true",
+    "properties": {
+        "geolocation": {
+            "type": "geo_point"
+        }
+    }
+}
