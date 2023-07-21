@@ -16,12 +16,13 @@ Access to Chronicle will be limited to a very small set of Hack Club HQ employee
 # Data
 #### Data sources
 Chronicle uses data from a variety of sources, including but not limited to:
-* Raw slack data exports (**ONLY** public data)
-* Airtable (leaders table, address ops table)
-* Pirateship
+* Airtable (leaders table, ops address table)
 * Scrapbook DB
 * Slack APIs
 * Google Geocoding APIs
+* Github APIs
+* Pirateship
+* Raw slack data exports (**ONLY** public data)
 
 #### Data freshness
 By design, Chronicle will not be designed in a way where new changes in underlying data will be synced to Elasticsearch promptly.  Instead, snapshots will be generated periodically from origin datasources, and then subsequently be consumed when we perform our next sync.
