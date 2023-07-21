@@ -137,10 +137,10 @@ services:
       - SERVERNAME=enterprisesearch
       - secret_management.encryption_keys=[${ENCRYPTION_KEYS}]
       - allow_es_settings_modification=true
+      - elasticsearch.ssl.enabled=true
       - elasticsearch.host=https://es01:9200
       - elasticsearch.username=elastic
       - elasticsearch.password=${ELASTIC_PASSWORD}
-      - elasticsearch.ssl.enabled=false
       - elasticsearch.ssl.certificate_authority=/usr/share/enterprise-search/config/certs/ca/ca.crt
       - kibana.external_url=http://kibana:5601
     mem_limit: ${MEM_LIMIT}
@@ -163,4 +163,3 @@ volumes:
     driver: local
   kibanadata:
     driver: local
-
