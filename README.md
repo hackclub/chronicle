@@ -1,11 +1,20 @@
 # The Hack Club Dashboard!
 
 ## Purpose
-Chronicle is a data indexing tool that allows for answering important questions Hack Club has about its members - for instance:
+
+Chronicle is the “Hack Club dashboard”, and is meant to:
+
+1. Provide metrics around HQ programs, like “How many people have completed a ‘you ship, we ship’ project like Sprig this month?”
+2. Enable Hack Club staff to do direct outreach to Hack Clubbers who are involved in one part of Hack Club, but not others yet (ex. “Who has published a Sprig game, but not yet come to an HQ hackathon?“).
+
+Some examples of questions that Chronicle should be able to answer:
+
 * Who are active Hack Clubbers within driving distance of AngelHacks?
 * Who came to Epoch and has contributed to Hack Club repos on GitHub?
-* Who is new to Slack, but hasn't contributed a Sprig game?
-* Who has a lot of expertise with Rust, but hasn't contributed to the Burrow project nor joined its channel?
+* Who is new to Slack, but hasn’t contributed a Sprig game?
+* Who has a lot of expertise with Rust, but hasn’t contributed to the Burrow project nor joined its channel?
+
+Key to this project is the fact that Hack Club is volunteer-led, and doesn’t want to mandate usage of universal systems (ex. unified hackathon registration) across the organization.
 
 ## Components
 Chronicle is split into two major components:
