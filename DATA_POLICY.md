@@ -34,6 +34,10 @@ Some examples of what "public data" is and isn't:
 
 -   Only publicly available data on Slack (such as information similar to [Slack Analytics](https://hackclub.slack.com/stats)), usually focusing on channels for HQ-led projects, such as Sprig, Haxidraw, and Burrow. The actual content of messages will not be used. Private channels and DMs are always off limits, [like we announced 5 years ago.](https://hackclub.slack.com/archives/C0266FRGT/p1521835388000021)
 
+Notable exceptions / caveats
+
+-   There are certain systems (for example, Hack Club Bank) that may require long-term logging of IP addresses and other metadata for purposes of security / fraud detection & deterrence / auditing.  This data is and will not be used for marketing purposes, nor would it be conflated with other outside datasets such as what Chronicle uses, but instead is purely intended to ensure engineering stability and compliance with financial standards / laws.
+
 Other aspects of data policy:
 
 -   Outside of core operations (ex. we have to give emails to Stripe for people to get Hack Club Bank cards mailed to them, or we have to give your email to GitHub to invite you to a HC GitHub repo), Hack Club HQ won't share data with external parties without people opting-in first. Ex. If people want invites for early access to GitHub's new code search, we will ask who wants invites first before sharing emails.
