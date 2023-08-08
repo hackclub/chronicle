@@ -41,7 +41,7 @@ By design, Chronicle will not be designed in a way where new changes in underlyi
 #### Data privacy
 Given the sensitive nature of the data Chronicle uses, Chronicle is **not** a tool made for public consumption.  All data posted here in this repo is for purposes of testing and development is mock data not relating to any real person.
 
-Please refer to Hack Club's official data policy guidelines [here](http://please.fill.me.in.com).
+Please refer to Hack Club's official data policy guidelines [here](https://github.com/hackclub/chronicle/blob/main/DATA_POLICY.md).
 
 ## Local development environment
 
