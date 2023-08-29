@@ -2,6 +2,9 @@ package com.hackclub.clubs.commands;
 
 import com.hackclub.clubs.Main;
 import com.hackclub.clubs.GlobalData;
+import com.hackclub.clubs.events.Angelhacks;
+import com.hackclub.clubs.events.Assemble;
+import com.hackclub.clubs.events.Outernet;
 import com.hackclub.clubs.github.Github;
 import com.hackclub.clubs.models.*;
 import com.hackclub.clubs.slack.SlackUtils;
@@ -13,23 +16,18 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
 import com.hackclub.common.agg.Aggregator;
-import com.hackclub.common.agg.DoubleAggregator;
-import com.hackclub.common.agg.EntityDataExtractor;
-import com.hackclub.common.agg.EntityProcessor;
 import com.hackclub.common.elasticsearch.ESCommand;
 import com.hackclub.common.elasticsearch.ESUtils;
 import com.hackclub.common.file.BlobStore;
 import com.hackclub.common.geo.Geocoder;
+import org.apache.commons.lang3.StringUtils;
 import picocli.CommandLine;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,11 +63,14 @@ public class GenerateProfilesCommand extends ESCommand {
     @CommandLine.Parameters(index = "5", description = "URI to pirate ship shipment csv file")
     private URI pirateshipShipmentCsvUri;
 
-    @CommandLine.Parameters(index = "6", description = "Operations People Table csv file")
-    private URI operationsPeopleCsvUri;
+    @CommandLine.Parameters(index = "6", description = "URI to assemble registration csv file")
+    private URI assembleRegistrationCsvUri;
 
-//    @CommandLine.Parameters(index = "7", description = "Mail API people table csv")
-//    private URI mailPeopleCsvUri;
+    @CommandLine.Parameters(index = "7", description = "URI to outernet registration csv file")
+    private URI outernetRegistrationCsvUri;
+
+    @CommandLine.Parameters(index = "8", description = "URI to angelhacks registration csv file")
+    private URI angelhacksRegistrationCsvUri;
 
     @Override
     public Integer call() throws Exception {
@@ -84,19 +85,13 @@ public class GenerateProfilesCommand extends ESCommand {
         GlobalData.staffUserIds = loadStaffUsers(BlobStore.load(staffJsonUri));
         GlobalData.allUsers = loadUsers(BlobStore.load(inputUsersUri));
 
-        HashMap<String, ScrapbookAccount> scrapbookAccounts = loadScrapbookAccounts();
-        HashMap<String, ClubLeaderInfo> leaderInfo = loadClubLeaderInfoByEmail();
-        Map<String, Map<String, Integer>> emptyKeywords = Collections.emptyMap();
-        Map<String, OperationsInfo> operationsInfo = loadOperationsInfo();
-
-        conflateUserData(emptyKeywords,
-                scrapbookAccounts,
-                leaderInfo,
-                operationsInfo);
+        System.out.println("AGGREGATION PHASE");
+        aggregate();
+        System.out.println("CONFLATION PHASE");
+        conflate();
+        finish();
 
         writeUsersToES(esClient);
-
-        //outputAggregation(channelUniqueUserCountsNonStaffByMonth);
 
         final long totalTimeMs = System.currentTimeMillis() - startTimeMs;
         System.out.printf("Total time in seconds: %.02f\n", totalTimeMs / 1000.0f);
@@ -107,11 +102,17 @@ public class GenerateProfilesCommand extends ESCommand {
         return 0;
     }
 
+    private static void finish() {
+        GlobalData.allUsers.forEach((userId, hackClubUser) -> hackClubUser.finish());
+    }
+
     private Map<String, OperationsInfo> loadOperationsInfo() {
         return Collections.emptyMap();
     }
 
-    private Stream<ChannelDay> doCounts() throws Exception {
+    private Stream<ChannelDay> aggregate() throws Exception {
+        return Stream.empty();
+        /*
         Stream<ChannelDay> days = getDayStream(BlobStore.load(inputDirUri));
         Stream<ChannelEvent> dayEntries = days
                 //.limit(500)
@@ -138,20 +139,21 @@ public class GenerateProfilesCommand extends ESCommand {
         EntityProcessor<ChannelEvent, Map<String, Integer>> userKeywordAssociations = new EntityProcessor<>(keywordAggregator, keywordsExtractor);
 
         // Message counts
-        days = channelMessageCountsWithStaffByDay.process(days);
-        days = channelMessageCountsWithStaffByMonth.process(days);
-        days = channelMessageCountsWithStaffByYear.process(days);
-        days = channelMessageCountsWithStaffByAlltime.process(days);
+//        days = channelMessageCountsWithStaffByDay.process(days);
+//        days = channelMessageCountsWithStaffByMonth.process(days);
+//        days = channelMessageCountsWithStaffByYear.process(days);
+//        days = channelMessageCountsWithStaffByAlltime.process(days);
 
         // Unique user counts
-        days = channelUniqueUserCountsByDay.process(days);
-        days = channelUniqueUserCountsNonStaffByDay.process(days);
-        days = channelUniqueUserCountsNonStaffByMonth.process(days);
+//        days = channelUniqueUserCountsByDay.process(days);
+//        days = channelUniqueUserCountsNonStaffByDay.process(days);
+//        days = channelUniqueUserCountsNonStaffByMonth.process(days);
 
         dayEntries = userKeywordAssociations.process(dayEntries);
         System.out.printf("Finished keyword pipeline\n", dayEntries.count());
 
         return days;
+        */
     }
 
     private ArrayList<PirateShipEntry> loadShipmentInfo() throws IOException, CsvValidationException {
@@ -287,36 +289,45 @@ public class GenerateProfilesCommand extends ESCommand {
         return allLeaders;
     }
 
-    private void conflateUserData(Map<String, Map<String, Integer>> userKeywordCounts, Map<String, ScrapbookAccount> userScrapbookData, Map<String, ClubLeaderInfo> userClubLeaderInfo, Map<String, OperationsInfo> operationsInfo) {
-        GlobalData.allUsers.forEach((userId, hackClubUser) -> hackClubUser.onComplete(
-                userKeywordCounts.getOrDefault(userId, Collections.emptyMap()),
-                Optional.ofNullable(userScrapbookData.getOrDefault(userId, null)),
-                Optional.ofNullable(userClubLeaderInfo.getOrDefault(hackClubUser.getEmail(), null))
-        ));
+    private void conflate() throws CsvValidationException, IOException {
+        Map<String, Map<String, Integer>> userKeywordCounts = Collections.emptyMap();
+        Map<String, ScrapbookAccount> userScrapbookData = loadScrapbookAccounts();
+        Map<String, ClubLeaderInfo> userClubLeaderInfo = loadClubLeaderInfoByEmail();
 
-        final AtomicInteger count = new AtomicInteger(0);
+        GlobalData.allUsers.forEach((userId, hackClubUser) -> {
+            hackClubUser.setKeywords(userKeywordCounts.getOrDefault(userId, Collections.emptyMap()));
+            hackClubUser.setScrapbookAccount(Optional.ofNullable(userScrapbookData.getOrDefault(userId, null)));
+            hackClubUser.setLeaderInfo(Optional.ofNullable(userClubLeaderInfo.getOrDefault(hackClubUser.getEmail(), null)));
+        });
+
+        System.out.println("Conflating event data...");
+        conflateEventData();
+        System.out.println("Conflating slack data...");
+        conflateSlackData();
+        System.out.println("Conflating github data...");
+        conflateGithubData();
+    }
+
+    private void conflateEventData() throws CsvValidationException, IOException {
+        Outernet.conflate(outernetRegistrationCsvUri);
+        Assemble.conflate(assembleRegistrationCsvUri);
+        Angelhacks.conflate(angelhacksRegistrationCsvUri);
+    }
+
+    private void conflateSlackData() {
         GlobalData.allUsers.entrySet().parallelStream().forEach(entry -> {
-            int newCount = count.incrementAndGet();
-            if (newCount % 100 == 0) {
-                System.out.printf("Count: %d\n", newCount);
-            }
             String slackId = entry.getValue().getSlackUserId();
+            entry.getValue().setSlackInfo(SlackUtils.getSlackInfo(slackId, slackApiKey));
+        });
+    }
 
-            SlackUtils.getSlackInfo(slackId, slackApiKey).stream().parallel()
-                    .flatMap(slackInfo -> Github.getUserData(slackInfo.getGithubUsername(), githubApiKey)
-                            .stream()).forEach(ghInfo -> entry.getValue().setGithubInfo(ghInfo));
-
-            operationsInfo.forEach((id, opsInfo) -> {
-                Optional.ofNullable(GlobalData.allUsers.getOrDefault(slackId, null)).ifPresent(hackClubUser -> {
-                    hackClubUser.setOperationsInfo(opsInfo);
-                });
-            });
-
-//            try {
-//                Thread.sleep(50);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
+    private void conflateGithubData() {
+        GlobalData.allUsers.entrySet().parallelStream().forEach(entry -> {
+            HackClubUser user = entry.getValue();
+            String githubUsername = user.getGithubUsername();
+            if (StringUtils.isNotEmpty(githubUsername)) {
+                Github.getUserData(githubUsername, githubApiKey).ifPresent(user::setGithubInfo);
+            }
         });
     }
 

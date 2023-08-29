@@ -1,10 +1,16 @@
 package com.hackclub.clubs.models;
 
+import com.hackclub.clubs.models.event.AngelhacksRegistration;
+import com.hackclub.clubs.models.event.AssembleRegistration;
+import com.hackclub.clubs.models.event.EventRegistration;
+import com.hackclub.clubs.models.event.OuternetRegistration;
 import com.hackclub.common.geo.Geocoder;
+import com.hackclub.common.Utils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +31,7 @@ public class HackClubUser {
     private LocalDate earliestPostDate = null;
     private LocalDate latestPostDate = null;
     private boolean isStaff = false;
-    private String githubUrl = null;
+    private String githubUsername = null;
     private String timezone = null;
     private Integer maxScrapbookStreaks = null;
     private String pronouns = null;
@@ -52,7 +58,9 @@ public class HackClubUser {
     private static ConcurrentHashMap<String, Long> slackUserIdToIndexMapping = new ConcurrentHashMap<>();
     private static AtomicLong userIdMax = new AtomicLong(0);
     private Map<String, Integer> keywords = new HashMap<>();
+    private Optional<SlackInfo> slackInfo = Optional.empty();
     private GithubInfo githubInfo = new GithubInfo();
+    private Map<String, EventRegistration> eventAttendance = new HashMap<>();
 
     public HackClubUser(String slackUserId, String slackHandle, String slackUserName, String email, String status, String slackDisplayName) {
         this.slackUserId = slackUserId;
@@ -128,12 +136,7 @@ public class HackClubUser {
         return latestPostDate.isAfter(date);
     }
 
-    public void onComplete(Map<String, Integer> keywords, Optional<ScrapbookAccount> scrapbookAccount, Optional<ClubLeaderInfo> leaderInfo) {
-        System.out.println("Processing user: " + getSlackUserId());
-        setKeywords(keywords);
-        setScrapbookAccount(scrapbookAccount);
-        setLeaderInfo(leaderInfo);
-
+    public void finish() {
         ZoneId zoneId = ZoneId.systemDefault(); // or: ZoneId.of("Europe/Oslo");
 
         if (latestPostDate != null) {
@@ -145,23 +148,6 @@ public class HackClubUser {
         if (birthYear != null) {
             age = LocalDate.now().getYear() - birthYear;
         }
-    }
-
-    private void setLeaderInfo(Optional<ClubLeaderInfo> leaderInfoOpt) {
-        if (leaderInfoOpt.isEmpty())
-            return;
-
-        ClubLeaderInfo leaderInfo = leaderInfoOpt.get();
-        isOrWasLeader = leaderInfo.isOrWasLeader();
-        fullRealName = leaderInfo.getFullName();
-        birthday = leaderInfo.getBirthday();
-        schoolYear = leaderInfo.getSchoolYear();
-        phoneNumber = leaderInfo.getPhoneNumber();
-        address = leaderInfo.getAddress();
-        country = leaderInfo.getCountry();
-        gender = StringUtils.isEmpty(leaderInfo.getGender()) ? "Unknown" : leaderInfo.getGender();
-        ethnicity = StringUtils.isEmpty(leaderInfo.getEthnicity()) ? "Unknown" : leaderInfo.getEthnicity();
-        prettyAddress = leaderInfo.getPrettyAddress();
 
         if (prettyAddress != null) {
             try {
@@ -170,22 +156,54 @@ public class HackClubUser {
                 System.out.printf("Issue geocoding: %s\n", t.getMessage());
             }
         }
+    }
+
+    public void setLeaderInfo(Optional<ClubLeaderInfo> leaderInfoOpt) {
+        if (leaderInfoOpt.isEmpty())
+            return;
+
+        ClubLeaderInfo leaderInfo = leaderInfoOpt.get();
+        isOrWasLeader = leaderInfo.isOrWasLeader();
+        fullRealName = leaderInfo.getFullName();
+
+        birthday = sanitizeDate(leaderInfo.getBirthday());
+        schoolYear = leaderInfo.getSchoolYear();
+        phoneNumber = leaderInfo.getPhoneNumber();
+        address = leaderInfo.getAddress();
+        country = leaderInfo.getCountry();
+        gender = StringUtils.isEmpty(leaderInfo.getGender()) ? "Unknown" : leaderInfo.getGender();
+        ethnicity = StringUtils.isEmpty(leaderInfo.getEthnicity()) ? "Unknown" : leaderInfo.getEthnicity();
+        prettyAddress = leaderInfo.getPrettyAddress();
         twitter = leaderInfo.getTwitter();
 
         // Only slurp this if it doesn't exist already
-        if (!StringUtils.isEmpty(leaderInfo.getGithub()))
-            githubUrl = leaderInfo.getGithub();
+        if (!StringUtils.isEmpty(leaderInfo.getGithub())) {
+            githubUsername = Utils.getLastPathInUrl(leaderInfo.getGithub());
+        }
         birthYear = leaderInfo.getBirthYear();
-
-
     }
 
-    private void setScrapbookAccount(Optional<ScrapbookAccount> scrapbookAccount) {
+    private String sanitizeDate(String birthday) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            LocalDate.parse(birthday, formatter);
+            return birthday;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public void setScrapbookAccount(Optional<ScrapbookAccount> scrapbookAccount) {
         if (scrapbookAccount.isEmpty())
             return;
 
         ScrapbookAccount sba = scrapbookAccount.get();
-        githubUrl = StringUtils.isEmpty(sba.getGithubUrl()) ? null : sba.getGithubUrl();
+
+        String githubUrl = StringUtils.isEmpty(sba.getGithubUrl()) ? null : sba.getGithubUrl();
+        if (githubUrl != null) {
+            githubUsername = Utils.getLastPathInUrl(githubUrl);
+        }
+
         timezone = StringUtils.isEmpty(sba.getTimezone()) ? null : sba.getTimezone();
         maxScrapbookStreaks = sba.getMaxStreaks();
         pronouns = StringUtils.isEmpty(sba.getPronouns()) ? null : sba.getPronouns();
@@ -207,14 +225,6 @@ public class HackClubUser {
 
     public void setSlackHandle(String slackHandle) {
         this.slackHandle = slackHandle;
-    }
-
-    public String getGithubUrl() {
-        return githubUrl;
-    }
-
-    public void setGithubUrl(String githubUrl) {
-        this.githubUrl = githubUrl;
     }
 
     public String getTimezone() {
@@ -400,8 +410,6 @@ public class HackClubUser {
 
     public void setGithubInfo(GithubInfo githubInfo) {
         this.githubInfo = githubInfo;
-
-        System.out.println("Setting github info: " + githubInfo.toString());
     }
 
     public void setOperationsInfo(OperationsInfo opsInfo) {
@@ -420,7 +428,6 @@ public class HackClubUser {
                 ", earliestPostDate=" + earliestPostDate +
                 ", latestPostDate=" + latestPostDate +
                 ", isStaff=" + isStaff +
-                ", githubUrl='" + githubUrl + '\'' +
                 ", timezone='" + timezone + '\'' +
                 ", maxScrapbookStreaks=" + maxScrapbookStreaks +
                 ", pronouns='" + pronouns + '\'' +
@@ -446,5 +453,80 @@ public class HackClubUser {
                 ", keywords=" + keywords +
                 ", githubInfo=" + githubInfo +
                 '}';
+    }
+
+    public void setOuternetRegistration(OuternetRegistration reg) {
+        EventRegistration data = new EventRegistration();
+        data.setRsvped(true);
+        data.setAttended(reg.isCheckedIn());
+        data.setStipendRequested(reg.isReceivedStipend());
+        eventAttendance.put("outernet", data);
+
+        if (StringUtils.isEmpty(githubUsername)) {
+            githubUsername = Utils.getLastPathInUrl(reg.getGithub());
+        }
+    }
+
+    public void setAssembleRegistration(AssembleRegistration reg) {
+        EventRegistration data = new EventRegistration();
+        data.setRsvped(true);
+        data.setAttended(true);
+        data.setStipendRequested(reg.isReceivedStipend());
+
+        if (StringUtils.isNotEmpty(reg.getNearestAirport())) {
+            if (StringUtils.isEmpty(prettyAddress)) {
+                prettyAddress = "Airport - " + reg.getNearestAirport();
+            }
+        }
+        eventAttendance.put("assemble", data);
+    }
+
+    public void setAngelhacksRegistration(AngelhacksRegistration reg) {
+        EventRegistration data = new EventRegistration();
+        data.setAttended(reg.isCheckedIn());
+        data.setRsvped(true);
+        data.setStipendRequested(false);
+
+        eventAttendance.put("angelhacks", data);
+    }
+
+    public Optional<SlackInfo> getSlackInfo() {
+        return slackInfo;
+    }
+
+    public void setSlackInfo(Optional<SlackInfo> slackInfo) {
+        this.slackInfo = slackInfo;
+    }
+
+    public String getGithubUsername() {
+        return githubUsername;
+    }
+
+    public void setGithubUsername(String githubUsername) {
+        this.githubUsername = githubUsername;
+    }
+
+    public void setSlackUserName(String slackUserName) {
+        this.slackUserName = slackUserName;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setSlackUserId(String slackUserId) {
+        this.slackUserId = slackUserId;
+    }
+
+    public void setSlackDisplayName(String slackDisplayName) {
+        this.slackDisplayName = slackDisplayName;
+    }
+
+    public Map<String, EventRegistration> getEventAttendance() {
+        return eventAttendance;
+    }
+
+    public void setEventAttendance(Map<String, EventRegistration> eventAttendance) {
+        this.eventAttendance = eventAttendance;
     }
 }

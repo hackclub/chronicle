@@ -1,10 +1,13 @@
 package com.hackclub.common.geo;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.maps.GeoApiContext;
 import com.google.maps.GeocodingApi;
 import com.google.maps.errors.ApiException;
 import com.google.maps.model.GeocodingResult;
 import com.hackclub.clubs.models.GeoPoint;
+import com.hackclub.clubs.models.GithubInfo;
+import com.hackclub.common.file.Cache;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -28,11 +31,22 @@ public class Geocoder {
      * @throws ApiException
      */
     public static Optional<GeoPoint> geocode(String address) throws IOException, InterruptedException, ApiException {
-        GeocodingResult[] results =  GeocodingApi.geocode(geoApi, address).await();
-        if (results.length == 0)
-            return Optional.empty();
+        String geocodingCacheKey = "geocoding_" + address;
 
-        return Optional.of(new GeoPoint(results[0].geometry.location.lat, results[0].geometry.location.lng));
+        Optional<String> cachedGeo = Cache.load(geocodingCacheKey);
+        if (cachedGeo.isPresent()) {
+            return Optional.of(new ObjectMapper().readValue(cachedGeo.get(), GeoPoint.class));
+        } else {
+            GeocodingResult[] results = GeocodingApi.geocode(geoApi, address).await();
+            if (results.length == 0)
+                return Optional.empty();
+
+            GeoPoint ret = new GeoPoint(results[0].geometry.location.lat, results[0].geometry.location.lng);
+            System.out.println("Caching geopoint");
+            Cache.save(geocodingCacheKey, new ObjectMapper().writeValueAsString(ret));
+
+            return Optional.of(ret);
+        }
     }
 
     public static void shutdown() {

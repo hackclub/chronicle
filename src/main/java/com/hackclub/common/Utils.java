@@ -2,9 +2,11 @@ package com.hackclub.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,6 +60,30 @@ public class Utils {
     }
 
     public static int levenshtein(String str1, String str2) {
-        return new LevenshteinDistance(5).apply(str1, str2);
+        return levenshtein(str1, str2, 5);
+    }
+
+    public static int levenshtein(String str1, String str2, int threshold) {
+        return new LevenshteinDistance(threshold).apply(str1, str2);
+    }
+
+    public static String getLastPathInUrl(String github) {
+        if (StringUtils.isEmpty(github))
+            return null;
+
+        try {
+            URL url = new URL(github);
+            String path = url.getPath().replace("/", "");
+            return path;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public static double normalizedLevenshtein(String fromStr, String toStr, int maxDelta) {
+        double levDist = Utils.levenshtein(fromStr, toStr, maxDelta);
+        if (levDist == -1)
+            levDist = maxDelta;
+        return (maxDelta - levDist) / (float)maxDelta;
     }
 }
