@@ -45,6 +45,7 @@ public class Github {
         String cacheKey = username + "-github";
         Optional<GithubInfo> cachedGithubInfo = loadFromCache(cacheKey);
         if (cachedGithubInfo.isPresent()) {
+            cachedGithubInfo.get().setId(String.format("https://github.com/%s", username));
             return cachedGithubInfo;
         }
 
@@ -71,6 +72,7 @@ public class Github {
 
             Optional<GithubInfo> ghInfo = parseUserData(Utils.getPrettyJson(response.body()));
             cache(cacheKey, ghInfo);
+            ghInfo.ifPresent(githubInfo -> githubInfo.setId(String.format("https://github.com/%s", username)));
             return ghInfo;
         } catch (Throwable t) {
             t.printStackTrace();
