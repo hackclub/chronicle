@@ -6,6 +6,8 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
     user: "0"
+    networks:
+      - chronicle-backend
     command: >
       bash -c '
         if [ x${ELASTIC_PASSWORD} == x ]; then
@@ -58,6 +60,8 @@ services:
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - esdata01:/usr/share/elasticsearch/data
+    networks:
+      - chronicle-backend
     ports:
       - ${ES_PORT}:9200
     environment:
@@ -101,8 +105,8 @@ services:
     volumes:
       - certs:/usr/share/kibana/config/certs
       - kibanadata:/usr/share/kibana/data
-    ports:
-      - ${KIBANA_PORT}:5601
+    networks:
+      - chronicle-backend
     environment:
       - SERVERNAME=kibana
       - ELASTICSEARCH_HOSTS=https://es01:9200
@@ -137,13 +141,15 @@ services:
       - SERVERNAME=enterprisesearch
       - secret_management.encryption_keys=[${ENCRYPTION_KEYS}]
       - allow_es_settings_modification=true
-      - elasticsearch.ssl.enabled=true
       - elasticsearch.host=https://es01:9200
       - elasticsearch.username=elastic
       - elasticsearch.password=${ELASTIC_PASSWORD}
+      - elasticsearch.ssl.enabled=false
       - elasticsearch.ssl.certificate_authority=/usr/share/enterprise-search/config/certs/ca/ca.crt
       - kibana.external_url=http://kibana:5601
     mem_limit: ${MEM_LIMIT}
+    networks:
+      - chronicle-backend
     healthcheck:
       test:
         [
@@ -154,6 +160,25 @@ services:
       timeout: 10s
       retries: 120
 
+  nginx:
+    depends_on:
+      es01:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+    image: nginx:latest
+    container_name: webserver
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl/:/ssl/
+    networks:
+      - chronicle-backend
+
+
 volumes:
   certs:
     driver: local
@@ -163,3 +188,6 @@ volumes:
     driver: local
   kibanadata:
     driver: local
+
+networks:
+  chronicle-backend:
