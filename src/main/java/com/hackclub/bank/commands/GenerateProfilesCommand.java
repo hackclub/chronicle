@@ -1,5 +1,6 @@
 package com.hackclub.bank.commands;
 
+import com.hackclub.bank.Main;
 import com.hackclub.bank.models.BankAccountDataEntry;
 import com.hackclub.bank.models.BankAccountDocument;
 import com.hackclub.bank.models.BankAccountMetadata;
@@ -25,6 +26,9 @@ import java.util.stream.Stream;
  */
 @CommandLine.Command(name = "genprofiles")
 public class GenerateProfilesCommand extends ESCommand {
+    @CommandLine.ParentCommand
+    private Main mainCmd;
+
     @CommandLine.Parameters(index = "0", description = "A .csv file with a mapping of all bank accounts")
     private File bankAccountsCsvFile;
 
