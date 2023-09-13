@@ -1,6 +1,6 @@
 package com.hackclub.bank;
 
-import com.hackclub.clubs.commands.GenerateProfilesCommand;
+import com.hackclub.bank.commands.GenerateProfilesCommand;
 import com.hackclub.common.elasticsearch.InitIndexCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
