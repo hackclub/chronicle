@@ -10,8 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Cache {
+    private static AtomicLong cacheCount = new AtomicLong(0);
     public static void save(String key, String data) throws IOException {
         FileUtils.writeStringToFile(new File(getCachedPath(key)), data, StandardCharsets.UTF_8);
     }

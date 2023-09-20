@@ -8,6 +8,7 @@ import org.apache.commons.text.similarity.LevenshteinDistance;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -85,5 +86,13 @@ public class Utils {
         if (levDist == -1)
             levDist = maxDelta;
         return (maxDelta - levDist) / (float)maxDelta;
+    }
+
+    public static void doEvery(AtomicLong lastReportTime, long delay, Runnable operation) {
+        long timeDelta = System.currentTimeMillis() - lastReportTime.get();
+        if (timeDelta > delay) {
+            operation.run();
+            lastReportTime.set(System.currentTimeMillis());
+        }
     }
 }
