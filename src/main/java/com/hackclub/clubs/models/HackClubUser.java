@@ -158,29 +158,32 @@ public class HackClubUser {
         }
     }
 
-    public void setLeaderInfo(Optional<ClubLeaderInfo> leaderInfoOpt) {
-        if (leaderInfoOpt.isEmpty())
-            return;
+    public void setLeaderInfo(Optional<ClubInfo> clubInfoOpt, Optional<ClubLeaderApplicationInfo> leaderApplicationInfoOpt) {
+        if (leaderApplicationInfoOpt.isPresent()) {
+            ClubLeaderApplicationInfo leaderApplicationInfo = leaderApplicationInfoOpt.get();
+            isOrWasLeader = leaderApplicationInfo.isOrWasLeader();
+            fullRealName = leaderApplicationInfo.getFullName();
 
-        ClubLeaderInfo leaderInfo = leaderInfoOpt.get();
-        isOrWasLeader = leaderInfo.isOrWasLeader();
-        fullRealName = leaderInfo.getFullName();
+            birthday = sanitizeDate(leaderApplicationInfo.getBirthday());
+            schoolYear = leaderApplicationInfo.getSchoolYear();
+            phoneNumber = leaderApplicationInfo.getPhoneNumber();
+            address = leaderApplicationInfo.getAddress();
+            country = leaderApplicationInfo.getCountry();
+            gender = StringUtils.isEmpty(leaderApplicationInfo.getGender()) ? "Unknown" : leaderApplicationInfo.getGender();
+            ethnicity = StringUtils.isEmpty(leaderApplicationInfo.getEthnicity()) ? "Unknown" : leaderApplicationInfo.getEthnicity();
+            prettyAddress = leaderApplicationInfo.getPrettyAddress();
+            twitter = leaderApplicationInfo.getTwitter();
 
-        birthday = sanitizeDate(leaderInfo.getBirthday());
-        schoolYear = leaderInfo.getSchoolYear();
-        phoneNumber = leaderInfo.getPhoneNumber();
-        address = leaderInfo.getAddress();
-        country = leaderInfo.getCountry();
-        gender = StringUtils.isEmpty(leaderInfo.getGender()) ? "Unknown" : leaderInfo.getGender();
-        ethnicity = StringUtils.isEmpty(leaderInfo.getEthnicity()) ? "Unknown" : leaderInfo.getEthnicity();
-        prettyAddress = leaderInfo.getPrettyAddress();
-        twitter = leaderInfo.getTwitter();
-
-        // Only slurp this if it doesn't exist already
-        if (!StringUtils.isEmpty(leaderInfo.getGithub())) {
-            githubUsername = Utils.getLastPathInUrl(leaderInfo.getGithub());
+            // Only slurp this if it doesn't exist already
+            if (!StringUtils.isEmpty(leaderApplicationInfo.getGithub())) {
+                githubUsername = Utils.getLastPathInUrl(leaderApplicationInfo.getGithub());
+            }
+            birthYear = leaderApplicationInfo.getBirthYear();
         }
-        birthYear = leaderInfo.getBirthYear();
+
+        if (clubInfoOpt.isPresent()) {
+            // slurp data
+        }
     }
 
     private String sanitizeDate(String birthday) {

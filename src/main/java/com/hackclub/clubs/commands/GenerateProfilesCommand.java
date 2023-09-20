@@ -61,19 +61,22 @@ public class GenerateProfilesCommand extends ESCommand {
     @CommandLine.Parameters(index = "3", description = "URO to scrapbook account data csv file")
     private URI scrapbookAccountDataCsvUri;
 
-    @CommandLine.Parameters(index = "4", description = "URI to leader csv file")
-    private URI leadersCsvUri;
+    @CommandLine.Parameters(index = "4", description = "URI to potential leaders (club applications) csv file")
+    private URI clubApplicationsCsvUri;
 
-    @CommandLine.Parameters(index = "5", description = "URI to pirate ship shipment csv file")
+    @CommandLine.Parameters(index = "5", description = "URI to active clubs csv file")
+    private URI activeClubsCsvUri;
+
+    @CommandLine.Parameters(index = "6", description = "URI to pirate ship shipment csv file")
     private URI pirateshipShipmentCsvUri;
 
-    @CommandLine.Parameters(index = "6", description = "URI to assemble registration csv file")
+    @CommandLine.Parameters(index = "7", description = "URI to assemble registration csv file")
     private URI assembleRegistrationCsvUri;
 
-    @CommandLine.Parameters(index = "7", description = "URI to outernet registration csv file")
+    @CommandLine.Parameters(index = "8", description = "URI to outernet registration csv file")
     private URI outernetRegistrationCsvUri;
 
-    @CommandLine.Parameters(index = "8", description = "URI to angelhacks registration csv file")
+    @CommandLine.Parameters(index = "9", description = "URI to angelhacks registration csv file")
     private URI angelhacksRegistrationCsvUri;
 
     @Override
@@ -277,8 +280,8 @@ public class GenerateProfilesCommand extends ESCommand {
         return allScrapbookAccounts;
     }
 
-    private HashMap<String, ClubLeaderInfo> loadClubLeaderInfoByEmail() throws IOException, CsvValidationException {
-        CSVReader reader = new CSVReaderBuilder(new FileReader(BlobStore.load(leadersCsvUri)))
+    private HashMap<String, ClubLeaderApplicationInfo> loadClubLeaderApplicationInfoByEmail() throws IOException, CsvValidationException {
+        CSVReader reader = new CSVReaderBuilder(new FileReader(BlobStore.load(clubApplicationsCsvUri)))
                 .withSkipLines(1)
                 .build();
 
@@ -287,10 +290,10 @@ public class GenerateProfilesCommand extends ESCommand {
 
         String [] nextLine;
 
-        HashMap<String, ClubLeaderInfo> allLeaders = new HashMap<>();
+        HashMap<String, ClubLeaderApplicationInfo> allLeaders = new HashMap<>();
         while ((nextLine = reader.readNext()) != null)
         {
-            ClubLeaderInfo leader = ClubLeaderInfo.fromCsv(nextLine, columnIndices);
+            ClubLeaderApplicationInfo leader = ClubLeaderApplicationInfo.fromCsv(nextLine, columnIndices);
             if (leader.getEmail().length() > 0)
                 allLeaders.put(leader.getEmail(), leader);
         }
@@ -302,13 +305,14 @@ public class GenerateProfilesCommand extends ESCommand {
         System.out.println("Conflating event data...");
         Map<String, ScrapbookAccount> userScrapbookData = loadScrapbookAccounts();
         System.out.println("Conflating event data...");
-        Map<String, ClubLeaderInfo> userClubLeaderInfo = loadClubLeaderInfoByEmail();
+        Map<HackClubUser, ClubInfo> userClubInfo = loadAllUsersClubInfo();
+        Map<String, ClubLeaderApplicationInfo> userClubLeaderApplicationInfo = loadClubLeaderApplicationInfoByEmail();
 
         System.out.println("Conflating keywords, scrapbook, and leader data...");
         GlobalData.allUsers.forEach((userId, hackClubUser) -> {
             hackClubUser.setKeywords(userKeywordCounts.getOrDefault(userId, Collections.emptyMap()));
             hackClubUser.setScrapbookAccount(Optional.ofNullable(userScrapbookData.getOrDefault(userId, null)));
-            hackClubUser.setLeaderInfo(Optional.ofNullable(userClubLeaderInfo.getOrDefault(hackClubUser.getEmail(), null)));
+            hackClubUser.setLeaderInfo(Optional.ofNullable(userClubInfo.get(hackClubUser)), Optional.ofNullable(userClubLeaderApplicationInfo.getOrDefault(hackClubUser.getEmail(), null)));
         });
 
         System.out.println("Conflating event data...");
@@ -317,6 +321,11 @@ public class GenerateProfilesCommand extends ESCommand {
         conflateSlackData();
         System.out.println("Conflating github data...");
         conflateGithubData();
+    }
+
+    private Map<HackClubUser, ClubInfo> loadAllUsersClubInfo() {
+        // TODO: Fill in
+        return Collections.emptyMap();
     }
 
     private void conflateEventData() throws CsvValidationException, IOException {
