@@ -7,7 +7,7 @@ import java.util.HashMap;
 /**
  * Model object representing information that we know about Club Leaders
  */
-public class ClubLeaderInfo {
+public class ClubLeaderApplicationInfo {
     private String email;
     private boolean isOrWasLeader;
     private String fullName;
@@ -24,12 +24,12 @@ public class ClubLeaderInfo {
     private Integer birthYear;
 
     // Not publicly instantiable - use factory methods (fromCsv)
-    private ClubLeaderInfo() {
+    private ClubLeaderApplicationInfo() {
     }
 
     // ID,Application,Email,Logins,Application ID,Log In Path,Completed,Full Name,Birthday,School Year,Code,Phone,Address,Address Line 1,Address Line 2,Address City,Address State,Address Zip,Address Country,Address Formatted,Gender,Ethnicity,Website,Twitter,GitHub,Other,Hacker Story,Achievement,Technicality,Accepted Tokens,New Fact,Clubs Dashboard,Birth Year,Turnover ID,Turnover Invite?,Turnover
-    public static ClubLeaderInfo fromCsv(String[] nextLine, HashMap<String, Integer> columnIndices) {
-        ClubLeaderInfo cli = new ClubLeaderInfo();
+    public static ClubLeaderApplicationInfo fromCsv(String[] nextLine, HashMap<String, Integer> columnIndices) {
+        ClubLeaderApplicationInfo cli = new ClubLeaderApplicationInfo();
 
         cli.email = nextLine[columnIndices.get("Email")];
         cli.isOrWasLeader = nextLine[columnIndices.get("Completed")].equals("checked");
