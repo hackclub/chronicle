@@ -4,6 +4,7 @@ import com.hackclub.clubs.models.SlackInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slack.api.Slack;
+import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.users.profile.UsersProfileGetRequest;
 import com.slack.api.methods.response.users.profile.UsersProfileGetResponse;
 import com.slack.api.model.User;
@@ -48,15 +49,17 @@ public class SlackUtils {
                     ret = Optional.of(slackInfo);
                     success = true;
                 }
-            } catch (Throwable t) {
-                t.printStackTrace();
-                System.out.println("warning - issue");
-                try {
-                    // We'll put a sleep here to back off a bit, errors here usually relate to rate limits
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    // Do nothing
+            } catch (SlackApiException e) {
+                if (e.getResponse().code() == 429) {
+                    handleError(e, false,500);
+                    ret = Optional.empty();
+                } else {
+                    handleError(e, true, 0);
+                    ret = Optional.empty();
                 }
+            }
+            catch (Throwable t) {
+                handleError(t, true,0);
                 ret = Optional.empty();
             }
         }
@@ -65,9 +68,23 @@ public class SlackUtils {
         return ret;
     }
 
+    private static void handleError(Throwable t, boolean log, long msToWait) {
+        if (log) {
+            System.out.println("warning - issue");
+            t.printStackTrace();
+        }
+        try {
+            // We'll put a sleep here to back off a bit, errors here usually relate to rate limits
+            if (msToWait > 0) {
+                Thread.sleep(msToWait);
+            }
+        } catch (InterruptedException e) {
+            // Do nothing
+        }
+    }
+
     private static void cacheSlackData(String slackUserId, Optional<SlackInfo> ret) {
         try {
-            System.out.println("Caching...");
             if (ret.isPresent()) {
                 Cache.save(slackUserId, new ObjectMapper().writeValueAsString(ret.get()));
             }

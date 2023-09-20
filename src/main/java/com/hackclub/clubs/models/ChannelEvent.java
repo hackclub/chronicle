@@ -1,9 +1,12 @@
 package com.hackclub.clubs.models;
 
 import com.hackclub.clubs.GlobalData;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
@@ -16,6 +19,7 @@ public class ChannelEvent {
     private String text;
     private ChannelDay parent;
     private HashMap<String, Integer> tokenOccurrences = new HashMap<>();
+    public static ConcurrentHashMap<String, Boolean> ignoredAccounts = new ConcurrentHashMap<>();
 
     @Override
     public String toString() {
@@ -64,8 +68,11 @@ public class ChannelEvent {
     }
 
     public void onComplete() {
-        if (!GlobalData.allUsers.containsKey(user))
+        if (!GlobalData.allUsers.containsKey(user)) {
+            ignoredAccounts.put(user, true);
             return;
+        }
+
         GlobalData.allUsers.get(user).onSlackChatMessageProcessed(this);
     }
 

@@ -12,6 +12,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.hackclub.common.Utils;
+import com.hackclub.common.agg.DoubleAggregator;
+import com.hackclub.common.agg.EntityDataExtractor;
+import com.hackclub.common.agg.EntityProcessor;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
@@ -74,9 +78,12 @@ public class GenerateProfilesCommand extends ESCommand {
 
     @Override
     public Integer call() throws Exception {
+        System.out.println("Initializing geocoder");
         Geocoder.initialize(googleGeocodingApiKey);
+        System.out.printf("Initializing elasticsearch client (host: %s port: %d)%n", esHostname, esPort);
         ElasticsearchClient esClient = ESUtils.createElasticsearchClient(esHostname, esPort, esUsername, esPassword, esFingerprint);
 
+        System.out.printf("Clearing the \"%s\" index%n", esIndex);
         clearIndex(esClient, esIndex);
 
         final long startTimeMs = System.currentTimeMillis();
@@ -87,10 +94,14 @@ public class GenerateProfilesCommand extends ESCommand {
 
         System.out.println("AGGREGATION PHASE");
         aggregate();
+
+        System.out.printf("Ignored user accounts: %s", String.join(", ", ChannelEvent.ignoredAccounts.keySet()));
+
         System.out.println("CONFLATION PHASE");
         conflate();
-        finish();
-
+        System.out.println("POST-PROCESSING PHASE");
+        postProcess();
+        System.out.println("UPLOAD PHASE");
         writeUsersToES(esClient);
 
         final long totalTimeMs = System.currentTimeMillis() - startTimeMs;
@@ -102,7 +113,7 @@ public class GenerateProfilesCommand extends ESCommand {
         return 0;
     }
 
-    private static void finish() {
+    private static void postProcess() {
         GlobalData.allUsers.forEach((userId, hackClubUser) -> hackClubUser.finish());
     }
 
@@ -111,13 +122,11 @@ public class GenerateProfilesCommand extends ESCommand {
     }
 
     private Stream<ChannelDay> aggregate() throws Exception {
-        return Stream.empty();
-        /*
         Stream<ChannelDay> days = getDayStream(BlobStore.load(inputDirUri));
         Stream<ChannelEvent> dayEntries = days
                 //.limit(500)
                 //.filter(day -> day.getLocalDate().isAfter(LocalDate.now().minusMonths(12)))
-                .flatMap(day -> day.getEntries(true))
+                .flatMap(day -> day.getEntries(false))
                 .filter(de -> de.getUser() != null)
                 .peek(ChannelEvent::tokenize)
                 .peek(ChannelEvent::onComplete);
@@ -153,7 +162,6 @@ public class GenerateProfilesCommand extends ESCommand {
         System.out.printf("Finished keyword pipeline\n", dayEntries.count());
 
         return days;
-        */
     }
 
     private ArrayList<PirateShipEntry> loadShipmentInfo() throws IOException, CsvValidationException {
@@ -291,9 +299,12 @@ public class GenerateProfilesCommand extends ESCommand {
 
     private void conflate() throws CsvValidationException, IOException {
         Map<String, Map<String, Integer>> userKeywordCounts = Collections.emptyMap();
+        System.out.println("Conflating event data...");
         Map<String, ScrapbookAccount> userScrapbookData = loadScrapbookAccounts();
+        System.out.println("Conflating event data...");
         Map<String, ClubLeaderInfo> userClubLeaderInfo = loadClubLeaderInfoByEmail();
 
+        System.out.println("Conflating keywords, scrapbook, and leader data...");
         GlobalData.allUsers.forEach((userId, hackClubUser) -> {
             hackClubUser.setKeywords(userKeywordCounts.getOrDefault(userId, Collections.emptyMap()));
             hackClubUser.setScrapbookAccount(Optional.ofNullable(userScrapbookData.getOrDefault(userId, null)));
@@ -315,10 +326,32 @@ public class GenerateProfilesCommand extends ESCommand {
     }
 
     private void conflateSlackData() {
-        GlobalData.allUsers.entrySet().parallelStream().forEach(entry -> {
+        final AtomicLong lastReportTime = new AtomicLong(System.currentTimeMillis());
+        Set<Map.Entry<String, HackClubUser>> allUsers = GlobalData.allUsers.entrySet();
+        final AtomicLong totalEntries = new AtomicLong(allUsers.size());
+        final AtomicLong processedEntries = new AtomicLong(0);
+
+        // Iterate over all users
+        allUsers.parallelStream().forEach(entry -> {
             String slackId = entry.getValue().getSlackUserId();
             entry.getValue().setSlackInfo(SlackUtils.getSlackInfo(slackId, slackApiKey));
+            processedEntries.incrementAndGet();
+            reportProgressIfNeeded(lastReportTime, totalEntries, processedEntries);
         });
+    }
+
+    private void reportProgressIfNeeded(AtomicLong lastReportTime, AtomicLong totalEntries, AtomicLong processedEntries) {
+        Utils.doEvery(lastReportTime, 1000, () -> {
+            float percent = ((float) processedEntries.get() / (float) totalEntries.get()) * 100.0f;
+            String formattedTime = getFormattedSlackTimeLeft(processedEntries.get(), totalEntries.get());
+            System.out.printf("%.2f%% complete (%d/%d) %s%n", percent, processedEntries.get(), totalEntries.get(), formattedTime);
+        });
+    }
+
+    private String getFormattedSlackTimeLeft(float current, long total) {
+        // We take advantage of knowing that we are rate limited to 100 RPM per https://api.slack.com/methods/users.profile.get
+        long minutesLeft = (long)((total - current) / 100.0f);
+        return String.format("%d minutes left", minutesLeft);
     }
 
     private void conflateGithubData() {
@@ -340,8 +373,11 @@ public class GenerateProfilesCommand extends ESCommand {
                         .id(hackClubUser.getSlackUserId())
                         .document(hackClubUser));
             } catch (Throwable t) {
+                System.out.printf("Warning - %s", t.getMessage().substring(0, 20));
+                /*
                 t.printStackTrace();
                 System.out.println(String.format("Issue writing user %s (%s) to ES - %s", userId, hackClubUser.getFullRealName(), t.getMessage()));
+                 */
             }
         });
     }
