@@ -7,6 +7,7 @@ import com.hackclub.clubs.events.Assemble;
 import com.hackclub.clubs.events.Outernet;
 import com.hackclub.clubs.github.Github;
 import com.hackclub.clubs.models.*;
+import com.hackclub.clubs.models.event.AngelhacksRegistration;
 import com.hackclub.clubs.slack.SlackUtils;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +17,9 @@ import com.hackclub.common.Utils;
 import com.hackclub.common.agg.DoubleAggregator;
 import com.hackclub.common.agg.EntityDataExtractor;
 import com.hackclub.common.agg.EntityProcessor;
+import com.hackclub.common.conflation.MatchResult;
+import com.hackclub.common.conflation.MatchScorer;
+import com.hackclub.common.conflation.Matcher;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvValidationException;
@@ -290,22 +294,24 @@ public class GenerateProfilesCommand extends ESCommand {
 
         String [] nextLine;
 
-        HashMap<String, ClubLeaderApplicationInfo> allLeaders = new HashMap<>();
+        HashMap<String, ClubLeaderApplicationInfo> allLeaderApplications = new HashMap<>();
         while ((nextLine = reader.readNext()) != null)
         {
             ClubLeaderApplicationInfo leader = ClubLeaderApplicationInfo.fromCsv(nextLine, columnIndices);
             if (leader.getEmail().length() > 0)
-                allLeaders.put(leader.getEmail(), leader);
+                allLeaderApplications.put(leader.getEmail(), leader);
         }
-        return allLeaders;
+        return allLeaderApplications;
     }
 
     private void conflate() throws CsvValidationException, IOException {
+        System.out.println("Loading slack keyword counts...");
         Map<String, Map<String, Integer>> userKeywordCounts = Collections.emptyMap();
-        System.out.println("Conflating event data...");
+        System.out.println("Loading scrapbook data...");
         Map<String, ScrapbookAccount> userScrapbookData = loadScrapbookAccounts();
-        System.out.println("Conflating event data...");
+        System.out.println("Loading clubs data...");
         Map<HackClubUser, ClubInfo> userClubInfo = loadAllUsersClubInfo();
+        System.out.println("Loading clubs application data...");
         Map<String, ClubLeaderApplicationInfo> userClubLeaderApplicationInfo = loadClubLeaderApplicationInfoByEmail();
 
         System.out.println("Conflating keywords, scrapbook, and leader data...");
@@ -323,10 +329,44 @@ public class GenerateProfilesCommand extends ESCommand {
         conflateGithubData();
     }
 
-    private Map<HackClubUser, ClubInfo> loadAllUsersClubInfo() {
-        // TODO: Fill in
-        return Collections.emptyMap();
+    private Map<HackClubUser, ClubInfo> loadAllUsersClubInfo() throws IOException, CsvValidationException {
+        CSVReader reader = new CSVReaderBuilder(new FileReader(BlobStore.load(activeClubsCsvUri)))
+                .withSkipLines(1)
+                .build();
+
+        String[] columns = "Venue,Application Link,Current Leader(s),Current Leaders' Emails,Notes,Status,Location,Slack ID,Leader Address,Address Line 1,Address Line 2,Address City,Address State,Address Zip,Address Country,Address Formatted,Last Check-In,Tier,T1-Engaged-Super,T1-Engaged,T1-Super,T1,On Bank,Latitude,Longitude,Last Outreach,Next check-In,Ambassador,Club Leaders,Prospective Leaders,Email (from Prospective Leaders),Full Name (from Prospective Leaders),Phone (from Prospective Leaders),Current Leaders' Phones,Leader Phone,Leader-Club Join,Leader Birthday,Continent".split(",");
+        HashMap<String, Integer> columnIndices = ESUtils.getIndexMapping(columns);
+
+        String [] nextLine;
+
+        HashSet<ClubInfo> allClubs = new HashSet<>();
+        while ((nextLine = reader.readNext()) != null)
+        {
+            allClubs.add(ClubInfo.fromCsv(nextLine, columnIndices));
+        }
+
+        Matcher<HackClubUser, ClubInfo> clubMatcher = new Matcher<>(new HashSet<>(GlobalData.allUsers.values()), allClubs, clubScorer);
+        Set<MatchResult<HackClubUser, ClubInfo>> results = clubMatcher.getResults();
+        HashMap<HackClubUser, ClubInfo> allUsersClubInfo = new HashMap<>();
+        for(MatchResult<HackClubUser, ClubInfo> result : results) {
+            allUsersClubInfo.put(result.getFrom(), result.getTo());
+        }
+
+        return allUsersClubInfo;
     }
+
+    private static MatchScorer<HackClubUser, ClubInfo> clubScorer = new MatchScorer<>() {
+        @Override
+        public double score(HackClubUser from, ClubInfo to) {
+            boolean hasEitherEmailOrSlackId = to.hasEmail(from.getEmail()) || to.hasSlackId(from.getSlackUserId());
+            return hasEitherEmailOrSlackId ? 1.0f : 0.0f;
+        }
+
+        @Override
+        public double getThreshold() {
+            return 0.99;
+        }
+    };
 
     private void conflateEventData() throws CsvValidationException, IOException {
         Outernet.conflate(outernetRegistrationCsvUri);

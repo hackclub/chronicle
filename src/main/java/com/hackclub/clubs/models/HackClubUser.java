@@ -38,6 +38,7 @@ public class HackClubUser {
     private String website = null;
     private boolean isScrapbookUser = false;
     private boolean isOrWasLeader = false;
+    private boolean isActiveLeader = false;
     private String fullRealName;
     private String birthday;
     private String schoolYear;
@@ -182,7 +183,12 @@ public class HackClubUser {
         }
 
         if (clubInfoOpt.isPresent()) {
-            // slurp data
+            ClubInfo clubInfo = clubInfoOpt.get();
+
+            isOrWasLeader = true;
+            isActiveLeader = StringUtils.equals(clubInfo.getStatus(), "active");
+            if (StringUtils.isEmpty(prettyAddress) && !StringUtils.isEmpty(clubInfo.getClubAddress()))
+                prettyAddress = clubInfo.getClubAddress();
         }
     }
 
@@ -531,5 +537,13 @@ public class HackClubUser {
 
     public void setEventAttendance(Map<String, EventRegistration> eventAttendance) {
         this.eventAttendance = eventAttendance;
+    }
+
+    public boolean isActiveLeader() {
+        return isActiveLeader;
+    }
+
+    public void setActiveLeader(boolean activeLeader) {
+        isActiveLeader = activeLeader;
     }
 }
