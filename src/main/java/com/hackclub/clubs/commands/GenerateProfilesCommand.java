@@ -83,6 +83,15 @@ public class GenerateProfilesCommand extends ESCommand {
     @CommandLine.Parameters(index = "9", description = "URI to angelhacks registration csv file")
     private URI angelhacksRegistrationCsvUri;
 
+    @CommandLine.Parameters(index = "10", description = "URI to blot engagements csv file")
+    private URI blotEngagementsCsvUri;
+
+    @CommandLine.Parameters(index = "11", description = "URI to sprig engagements csv file")
+    private URI sprigEngagementsCsvUri;
+
+    @CommandLine.Parameters(index = "12", description = "URI to onboard engagements csv file")
+    private URI onboardEngagementsCsvUri;
+
     @Override
     public Integer call() throws Exception {
         System.out.println("Initializing geocoder");

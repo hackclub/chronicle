@@ -7,6 +7,9 @@ public class Engagement {
     // Whether or not this person was rewarded with a prize from this engagement
     private boolean rewarded;
 
+    // The reason for the engagement happening ("I saw a poster!", etc)
+    private String reason;
+
     public Engagement() {}
 
     public boolean isImpressed() {
@@ -23,5 +26,12 @@ public class Engagement {
 
     public void setRewarded(boolean rewarded) {
         this.rewarded = rewarded;
+    }
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 }
