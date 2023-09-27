@@ -4,6 +4,7 @@ import com.hackclub.clubs.models.event.AngelhacksRegistration;
 import com.hackclub.clubs.models.event.AssembleRegistration;
 import com.hackclub.clubs.models.event.EventRegistration;
 import com.hackclub.clubs.models.event.OuternetRegistration;
+import com.hackclub.clubs.models.engagements.Engagement;
 import com.hackclub.common.geo.Geocoder;
 import com.hackclub.common.Utils;
 import org.apache.commons.lang3.StringUtils;
@@ -62,6 +63,7 @@ public class HackClubUser {
     private Optional<SlackInfo> slackInfo = Optional.empty();
     private GithubInfo githubInfo = new GithubInfo();
     private Map<String, EventRegistration> eventAttendance = new HashMap<>();
+    private Map<String, Engagement> engagements = new HashMap<>();
 
     public HackClubUser(String slackUserId, String slackHandle, String slackUserName, String email, String status, String slackDisplayName) {
         this.slackUserId = slackUserId;
@@ -545,5 +547,13 @@ public class HackClubUser {
 
     public void setActiveLeader(boolean activeLeader) {
         isActiveLeader = activeLeader;
+    }
+
+    public Map<String, Engagement> getEngagements() {
+        return engagements;
+    }
+
+    public void setEngagements(Map<String, Engagement> engagements) {
+        this.engagements = engagements;
     }
 }
