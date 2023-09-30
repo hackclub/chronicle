@@ -26,7 +26,7 @@ public class Assemble {
     public static void conflate(URI uri) throws CsvValidationException, IOException {
         HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
         HashSet<AssembleRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<AssembleRegistration, HackClubUser>> results = new Matcher<>(registrations, hackClubUsers, scorer).getResults();
+        Set<MatchResult<AssembleRegistration, HackClubUser>> results = new Matcher<>("Assemble attendance -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
         results.forEach(result -> result.getTo().setAssembleRegistration(result.getFrom()));
     }
 
@@ -44,7 +44,12 @@ public class Assemble {
     private static MatchScorer<AssembleRegistration, HackClubUser> scorer = new MatchScorer<>() {
         @Override
         public double score(AssembleRegistration from, HackClubUser to) {
-            return Utils.normalizedLevenshtein(from.getEmail(), to.getEmail(), 2);
+            double normalizedEmailDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getEmail()), Utils.safeToLower(to.getEmail()), 2);
+            if (normalizedEmailDistance > 0.49) return 1.0;
+            double normalizedFullnameDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getFullName()), Utils.safeToLower(to.getFullRealName()), 2);
+            if (normalizedFullnameDistance > 0.49)
+                return 1.0;
+            return (normalizedFullnameDistance + normalizedEmailDistance) / 2;
         }
 
         @Override

@@ -2,6 +2,9 @@ package com.hackclub.clubs.commands;
 
 import com.hackclub.clubs.Main;
 import com.hackclub.clubs.GlobalData;
+import com.hackclub.clubs.engagements.Blot;
+import com.hackclub.clubs.engagements.Onboard;
+import com.hackclub.clubs.engagements.Sprig;
 import com.hackclub.clubs.events.Angelhacks;
 import com.hackclub.clubs.events.Assemble;
 import com.hackclub.clubs.events.Outernet;
@@ -332,6 +335,8 @@ public class GenerateProfilesCommand extends ESCommand {
 
         System.out.println("Conflating event data...");
         conflateEventData();
+        System.out.println("Conflating engagement data...");
+        conflateEngagementData();
         System.out.println("Conflating slack data...");
         conflateSlackData();
         System.out.println("Conflating github data...");
@@ -354,7 +359,7 @@ public class GenerateProfilesCommand extends ESCommand {
             allClubs.add(ClubInfo.fromCsv(nextLine, columnIndices));
         }
 
-        Matcher<HackClubUser, ClubInfo> clubMatcher = new Matcher<>(new HashSet<>(GlobalData.allUsers.values()), allClubs, clubScorer);
+        Matcher<HackClubUser, ClubInfo> clubMatcher = new Matcher<>("Slack users -> clubs", new HashSet<>(GlobalData.allUsers.values()), allClubs, clubScorer);
         Set<MatchResult<HackClubUser, ClubInfo>> results = clubMatcher.getResults();
         HashMap<HackClubUser, ClubInfo> allUsersClubInfo = new HashMap<>();
         for(MatchResult<HackClubUser, ClubInfo> result : results) {
@@ -367,7 +372,8 @@ public class GenerateProfilesCommand extends ESCommand {
     private static MatchScorer<HackClubUser, ClubInfo> clubScorer = new MatchScorer<>() {
         @Override
         public double score(HackClubUser from, ClubInfo to) {
-            boolean hasEitherEmailOrSlackId = to.hasEmail(from.getEmail()) || to.hasSlackId(from.getSlackUserId());
+            boolean exactSlackIdMatch = to.getSlackId() != null && StringUtils.equals(to.getSlackId(), from.getSlackUserId());
+            boolean hasEitherEmailOrSlackId = exactSlackIdMatch || to.hasEmail(from.getEmail()) || to.hasSlackId(from.getSlackUserId());
             return hasEitherEmailOrSlackId ? 1.0f : 0.0f;
         }
 
@@ -376,6 +382,12 @@ public class GenerateProfilesCommand extends ESCommand {
             return 0.99;
         }
     };
+
+    private void conflateEngagementData() throws CsvValidationException, IOException {
+        Blot.conflate(blotEngagementsCsvUri);
+        Onboard.conflate(onboardEngagementsCsvUri);
+        Sprig.conflate(sprigEngagementsCsvUri);
+    }
 
     private void conflateEventData() throws CsvValidationException, IOException {
         Outernet.conflate(outernetRegistrationCsvUri);

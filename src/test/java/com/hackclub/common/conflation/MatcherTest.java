@@ -29,7 +29,7 @@ class MatcherTest {
         expectedResults.put(from1, to1);
         expectedResults.put(from2, to2);
 
-        Set<MatchResult<From, To>> results = new Matcher<>(fromSet, toSet, createBasicScorer(0)).getResults();
+        Set<MatchResult<From, To>> results = new Matcher<>("MatcherTest", fromSet, toSet, createBasicScorer(0)).getResults();
         Assertions.assertEquals(results.size(), 2);
         for (Iterator<MatchResult<From, To>> it = results.iterator(); it.hasNext(); ) {
             MatchResult<From, To> match = it.next();
@@ -55,7 +55,7 @@ class MatcherTest {
         expectedResults.put(from1, to1);
         expectedResults.put(from2, to2);
 
-        Set<MatchResult<From, To>> results = new Matcher<>(fromSet, toSet, createBasicScorer(0)).getResults();
+        Set<MatchResult<From, To>> results = new Matcher<>("MatcherTestSlightDifferences", fromSet, toSet, createBasicScorer(0)).getResults();
         Assertions.assertEquals(results.size(), 2);
         for (Iterator<MatchResult<From, To>> it = results.iterator(); it.hasNext(); ) {
             MatchResult<From, To> match = it.next();
@@ -81,7 +81,7 @@ class MatcherTest {
         expectedResults.put(from1, to1);
         expectedResults.put(from2, to2);
 
-        Set<MatchResult<From, To>> results = new Matcher<>(fromSet, toSet, createBasicScorer(0)).getResults();
+        Set<MatchResult<From, To>> results = new Matcher<>("MatcherTestMassiveDifferences", fromSet, toSet, createBasicScorer(0)).getResults();
         Assertions.assertEquals(0, results.size());
     }
 

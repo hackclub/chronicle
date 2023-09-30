@@ -1,5 +1,8 @@
 package com.hackclub.clubs.models;
 
+import com.hackclub.clubs.models.engagements.BlotEngagement;
+import com.hackclub.clubs.models.engagements.OnboardEngagement;
+import com.hackclub.clubs.models.engagements.SprigEngagement;
 import com.hackclub.clubs.models.event.AngelhacksRegistration;
 import com.hackclub.clubs.models.event.AssembleRegistration;
 import com.hackclub.clubs.models.event.EventRegistration;
@@ -499,6 +502,27 @@ public class HackClubUser {
         data.setStipendRequested(false);
 
         eventAttendance.put("angelhacks", data);
+    }
+
+    public void setBlotEngagement(BlotEngagement reg) {
+        Engagement data = new Engagement();
+        data.setImpressed(true);
+        data.setRewarded(StringUtils.equals(reg.getStatus(), "Shipped"));
+        engagements.put("blot", data);
+    }
+
+    public void setSprigEngagement(SprigEngagement reg) {
+        Engagement data = new Engagement();
+        data.setImpressed(true);
+        data.setRewarded(StringUtils.equals(reg.getStatus(), "Shipped"));
+        engagements.put("sprig", data);
+    }
+
+    public void setOnboardEngagement(OnboardEngagement reg) {
+        Engagement data = new Engagement();
+        data.setImpressed(true);
+        data.setRewarded(StringUtils.equals(reg.getStatus(), "Approved"));
+        engagements.put("onboard", data);
     }
 
     public Optional<SlackInfo> getSlackInfo() {

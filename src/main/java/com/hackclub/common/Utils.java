@@ -82,6 +82,10 @@ public class Utils {
     }
 
     public static double normalizedLevenshtein(String fromStr, String toStr, int maxDelta) {
+        // Nulls should not match
+        if (fromStr == null || toStr == null)
+            return 0;
+
         double levDist = Utils.levenshtein(fromStr, toStr, maxDelta);
         if (levDist == -1)
             levDist = maxDelta;
@@ -94,5 +98,10 @@ public class Utils {
             operation.run();
             lastReportTime.set(System.currentTimeMillis());
         }
+    }
+
+    public static String safeToLower(String email) {
+        if (email == null) return null;
+        return email.toLowerCase();
     }
 }

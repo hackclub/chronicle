@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
  */
 public class Matcher <FromType, ToType> {
     private Set<MatchResult<FromType, ToType>> results;
+    private int fromSize;
+    private int toSize;
 
     /**
      * Constructor.  Takes in the input datasets, and a scorer that will be used to associate them
@@ -17,8 +19,9 @@ public class Matcher <FromType, ToType> {
      * @param toSet The input 'to' set
      * @param scorer A scorer that will rank/relate items from each set
      */
-    public Matcher(Set<FromType> fromSet, Set<ToType> toSet, MatchScorer<FromType, ToType> scorer) {
+    public Matcher(String matcherName, Set<FromType> fromSet, Set<ToType> toSet, MatchScorer<FromType, ToType> scorer) {
         match(fromSet, toSet, scorer);
+        calculateStatistics(matcherName, fromSet, toSet, results);
     }
 
     private void match(Set<FromType> fromSet, Set<ToType> toSet, MatchScorer<FromType, ToType> scorer) {
@@ -42,5 +45,23 @@ public class Matcher <FromType, ToType> {
      */
     public Set<MatchResult<FromType, ToType>> getResults() {
         return results;
+    }
+
+    public void calculateStatistics(String matcherName, Set<FromType> fromSet, Set<ToType> toSet, Set<MatchResult<FromType, ToType>> resultSet) {
+        double fromSize = fromSet.size();
+        double toSize = toSet.size();
+        double fromsContainedInResults = fromSet.stream().filter(f -> resultSetContainsFrom(f, resultSet)).count();
+        double tosContainedInResults = toSet.stream().filter(t -> resultSetContainsTo(t, resultSet)).count();
+        double totalResults = resultSet.size();
+
+        System.out.printf("RUNNING MATCHER \"%s\"\r\n", matcherName);
+        System.out.printf("\tFROM coverage: %.02f%%\r\n", (fromsContainedInResults / fromSize) * 100.0f);
+        System.out.printf("\t  TO coverage: %.02f%%\r\n", (tosContainedInResults / toSize) * 100.0f);
+    }
+    private boolean resultSetContainsFrom(FromType f, Set<MatchResult<FromType, ToType>> resultSet) {
+        return resultSet.stream().anyMatch(r -> r.getFrom() == f);
+    }
+    private boolean resultSetContainsTo(ToType t, Set<MatchResult<FromType, ToType>> resultSet) {
+        return resultSet.stream().anyMatch(r -> r.getTo() == t);
     }
 }
