@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ClubInfo {
+    private String slackId;
     private String leaderSlackIds;
     private String leaderEmails;
     private String clubAddress;
@@ -24,6 +25,7 @@ public class ClubInfo {
     public static ClubInfo fromCsv(String[] nextLine, HashMap<String, Integer> columnIndices) {
         ClubInfo ci = new ClubInfo();
 
+        ci.slackId = nextLine[columnIndices.get("Slack ID")];
         ci.leaderEmails = nextLine[columnIndices.get("Current Leaders' Emails")];
         ci.leaderSlackIds = nextLine[columnIndices.get("Slack ID")];
         ci.clubAddress = nextLine[columnIndices.get("Address Formatted")];
@@ -115,5 +117,13 @@ public class ClubInfo {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSlackId() {
+        return slackId;
+    }
+
+    public void setSlackId(String slackId) {
+        this.slackId = slackId;
     }
 }

@@ -26,7 +26,7 @@ public class Angelhacks {
     public static void conflate(URI uri) throws CsvValidationException, IOException {
         HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
         HashSet<AngelhacksRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<AngelhacksRegistration, HackClubUser>> results = new Matcher<>(registrations, hackClubUsers, scorer).getResults();
+        Set<MatchResult<AngelhacksRegistration, HackClubUser>> results = new Matcher<>("Angelhacks attendance -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
         results.forEach(result -> result.getTo().setAngelhacksRegistration(result.getFrom()));
     }
 
@@ -44,7 +44,12 @@ public class Angelhacks {
     private static MatchScorer<AngelhacksRegistration, HackClubUser> scorer = new MatchScorer<>() {
         @Override
         public double score(AngelhacksRegistration from, HackClubUser to) {
-            return Utils.normalizedLevenshtein(from.getEmail(), to.getEmail(), 2);
+            double normalizedEmailDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getEmail()), Utils.safeToLower(to.getEmail()), 2);
+            if (normalizedEmailDistance > 0.49) return 1.0;
+            double normalizedFullnameDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getName()), Utils.safeToLower(to.getFullRealName()), 2);
+            if (normalizedFullnameDistance > 0.49)
+                return 1.0;
+            return (normalizedFullnameDistance + normalizedEmailDistance) / 2;
         }
 
         @Override

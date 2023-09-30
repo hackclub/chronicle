@@ -3,6 +3,7 @@ package com.hackclub.clubs.models.engagements;
 import java.util.HashMap;
 
 public class SprigEngagement {
+    private String name;
     private String githubUsername;
     private String pullRequest;
     private String email;
@@ -21,6 +22,7 @@ public class SprigEngagement {
     public static SprigEngagement fromCsv(String[] nextLine, HashMap<String, Integer> columnIndices) {
         SprigEngagement eng = new SprigEngagement();
 
+        eng.name = nextLine[columnIndices.get("Name")];
         eng.githubUsername = nextLine[columnIndices.get("GitHub Username")];
         eng.pullRequest = nextLine[columnIndices.get("Pull Request")];
         eng.email = nextLine[columnIndices.get("Email")];
@@ -104,5 +106,13 @@ public class SprigEngagement {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }

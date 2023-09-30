@@ -1,8 +1,9 @@
-package com.hackclub.clubs.events;
+package com.hackclub.clubs.engagements;
 
 import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
-import com.hackclub.clubs.models.event.OuternetRegistration;
+import com.hackclub.clubs.models.engagements.BlotEngagement;
+import com.hackclub.clubs.models.engagements.OnboardEngagement;
 import com.hackclub.common.Utils;
 import com.hackclub.common.conflation.MatchResult;
 import com.hackclub.common.conflation.MatchScorer;
@@ -20,32 +21,32 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Outernet {
-    private static String[] columns = "ID,Name,Club Leader?,Workshop / Lightning Talk Focus,Email,Pronouns,Birthday,T-Shirt Size,Travel,Dietary Restrictions,Parent's Name,Parent's Email,GitHub,Example Project,Curiosity,Guild Interest,Guild Focus,ranking,Workshop / Lightning Talk Interest,Stipend Record,Cool ideas,Shuttle Record,migration,workshop status,Waiver Sent,Created,Stipend Approved,Pod,Checked In?,Notes,Contact's Phone number,Checked out,Accepted Stipends".split(",");
+public class Onboard {
+    private static String[] columns = "Full Name,Email,Proof of High School Enrollment,GitHub handle,Country,Status,Commented on Github? ,On HCB? ,Birthdate,1st line of shipping address,Zip/Postal code of shipping address,2nd line of shipping address,City (shipping address),State,Referral category,How did you hear about OnBoard?,Created,Is this the first PCB you've made?".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
         HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
-        HashSet<OuternetRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<OuternetRegistration, HackClubUser>> results = new Matcher<>("Outernet registrations -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setOuternetRegistration(result.getFrom()));
+        HashSet<OnboardEngagement> registrations = load(uri);
+        Set<MatchResult<OnboardEngagement, HackClubUser>> results = new Matcher<>("Onboard engagements -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
+        results.forEach(result -> result.getTo().setOnboardEngagement(result.getFrom()));
     }
 
-    private static HashSet<OuternetRegistration> loadRegistrations(URI uri) throws IOException, CsvValidationException {
-        HashSet<OuternetRegistration> registrations = new HashSet<>();
+    private static HashSet<OnboardEngagement> load(URI uri) throws IOException, CsvValidationException {
+        HashSet<OnboardEngagement> engagements = new HashSet<>();
         CSVReader reader = new CSVReaderBuilder(new FileReader(BlobStore.load(uri))).withSkipLines(1).build();
         HashMap<String, Integer> columnIndices = ESUtils.getIndexMapping(columns);
         String [] nextLine;
         while ((nextLine = reader.readNext()) != null) {
-            registrations.add(OuternetRegistration.fromCsv(nextLine, columnIndices));
+            engagements.add(OnboardEngagement.fromCsv(nextLine, columnIndices));
         }
-        return registrations;
+        return engagements;
     }
 
-    private static MatchScorer<OuternetRegistration, HackClubUser> scorer = new MatchScorer<>() {
+    private static MatchScorer<OnboardEngagement, HackClubUser> scorer = new MatchScorer<>() {
         @Override
-        public double score(OuternetRegistration from, HackClubUser to) {
+        public double score(OnboardEngagement from, HackClubUser to) {
             double normalizedEmailDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getEmail()), Utils.safeToLower(to.getEmail()), 2);
             if (normalizedEmailDistance > 0.49) return 1.0;
-            double normalizedFullnameDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getName()), Utils.safeToLower(to.getFullRealName()), 2);
+            double normalizedFullnameDistance = Utils.normalizedLevenshtein(Utils.safeToLower(from.getFullName()), Utils.safeToLower(to.getFullRealName()), 2);
             if (normalizedFullnameDistance > 0.49)
                 return 1.0;
             return (normalizedFullnameDistance + normalizedEmailDistance) / 2;

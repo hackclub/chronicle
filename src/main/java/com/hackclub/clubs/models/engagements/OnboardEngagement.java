@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.HashMap;
 
 public class OnboardEngagement {
+    private String email;
     private String fullName;
     private String githubHandle;
     private String status;
@@ -20,6 +21,7 @@ public class OnboardEngagement {
     public static OnboardEngagement fromCsv(String[] nextLine, HashMap<String, Integer> columnIndices) {
         OnboardEngagement eng = new OnboardEngagement();
 
+        eng.email = nextLine[columnIndices.get("Email")];
         eng.fullName = nextLine[columnIndices.get("Full Name")];
         eng.githubHandle = nextLine[columnIndices.get("GitHub handle")];
         eng.status = nextLine[columnIndices.get("Status")];
@@ -76,5 +78,13 @@ public class OnboardEngagement {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }
