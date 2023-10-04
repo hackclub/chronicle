@@ -144,7 +144,7 @@ services:
       - elasticsearch.host=https://es01:9200
       - elasticsearch.username=elastic
       - elasticsearch.password=${ELASTIC_PASSWORD}
-      - elasticsearch.ssl.enabled=false
+      - elasticsearch.ssl.enabled=true
       - elasticsearch.ssl.certificate_authority=/usr/share/enterprise-search/config/certs/ca/ca.crt
       - kibana.external_url=http://kibana:5601
     mem_limit: ${MEM_LIMIT}
@@ -169,12 +169,15 @@ services:
     image: nginx:latest
     container_name: webserver
     restart: unless-stopped
+    environment:
+      HOSTNAME: ${HOSTNAME}
     ports:
       - 80:80
       - 443:443
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./ssl/:/ssl/
+      - ./nginx-template-variables:/etc/nginx/templates/chronicle.conf.template:ro
     networks:
       - chronicle-backend
 
