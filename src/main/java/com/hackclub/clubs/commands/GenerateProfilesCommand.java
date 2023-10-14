@@ -10,7 +10,6 @@ import com.hackclub.clubs.events.Assemble;
 import com.hackclub.clubs.events.Outernet;
 import com.hackclub.clubs.github.Github;
 import com.hackclub.clubs.models.*;
-import com.hackclub.clubs.models.event.AngelhacksRegistration;
 import com.hackclub.clubs.slack.SlackUtils;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -109,10 +108,10 @@ public class GenerateProfilesCommand extends ESCommand {
         Thread monitoringThread = startMonitoringThread();
 
         GlobalData.staffUserIds = loadStaffUsers(BlobStore.load(staffJsonUri));
-        GlobalData.allUsers = loadUsers(BlobStore.load(inputUsersUri));
+        loadUsers(BlobStore.load(inputUsersUri));
 
         System.out.println("AGGREGATION PHASE");
-        aggregate();
+        //aggregate();
 
         System.out.printf("Ignored user accounts: %s", String.join(", ", ChannelEvent.ignoredAccounts.keySet()));
 
@@ -133,7 +132,7 @@ public class GenerateProfilesCommand extends ESCommand {
     }
 
     private static void postProcess() {
-        GlobalData.allUsers.forEach((userId, hackClubUser) -> hackClubUser.finish());
+        HackClubUser.getAllUsers().forEach((userId, hackClubUser) -> hackClubUser.finish());
     }
 
     private Map<String, OperationsInfo> loadOperationsInfo() {
@@ -269,7 +268,7 @@ public class GenerateProfilesCommand extends ESCommand {
         HashMap<String, HackClubUser> allUsers = new HashMap<>();
         while ((nextLine = reader.readNext()) != null)
         {
-            HackClubUser hackClubUser = HackClubUser.fromCsv(nextLine);
+            HackClubUser hackClubUser = HackClubUser.fromSlackCsv(nextLine);
             hackClubUser.setStaff(GlobalData.staffUserIds.contains(hackClubUser.getSlackUserId()));
             allUsers.put(hackClubUser.getSlackUserId(), hackClubUser);
         }
@@ -327,7 +326,7 @@ public class GenerateProfilesCommand extends ESCommand {
         Map<String, ClubLeaderApplicationInfo> userClubLeaderApplicationInfo = loadClubLeaderApplicationInfoByEmail();
 
         System.out.println("Conflating keywords, scrapbook, and leader data...");
-        GlobalData.allUsers.forEach((userId, hackClubUser) -> {
+        HackClubUser.getAllUsers().forEach((userId, hackClubUser) -> {
             hackClubUser.setKeywords(userKeywordCounts.getOrDefault(userId, Collections.emptyMap()));
             hackClubUser.setScrapbookAccount(Optional.ofNullable(userScrapbookData.getOrDefault(userId, null)));
             hackClubUser.setLeaderInfo(Optional.ofNullable(userClubInfo.get(hackClubUser)), Optional.ofNullable(userClubLeaderApplicationInfo.getOrDefault(hackClubUser.getEmail(), null)));
@@ -359,7 +358,7 @@ public class GenerateProfilesCommand extends ESCommand {
             allClubs.add(ClubInfo.fromCsv(nextLine, columnIndices));
         }
 
-        Matcher<HackClubUser, ClubInfo> clubMatcher = new Matcher<>("Slack users -> clubs", new HashSet<>(GlobalData.allUsers.values()), allClubs, clubScorer);
+        Matcher<HackClubUser, ClubInfo> clubMatcher = new Matcher<>("Slack users -> clubs", new HashSet<>(HackClubUser.getAllUsers().values()), allClubs, clubScorer);
         Set<MatchResult<HackClubUser, ClubInfo>> results = clubMatcher.getResults();
         HashMap<HackClubUser, ClubInfo> allUsersClubInfo = new HashMap<>();
         for(MatchResult<HackClubUser, ClubInfo> result : results) {
@@ -397,7 +396,7 @@ public class GenerateProfilesCommand extends ESCommand {
 
     private void conflateSlackData() {
         final AtomicLong lastReportTime = new AtomicLong(System.currentTimeMillis());
-        Set<Map.Entry<String, HackClubUser>> allUsers = GlobalData.allUsers.entrySet();
+        Set<Map.Entry<String, HackClubUser>> allUsers = HackClubUser.getAllUsers().entrySet();
         final AtomicLong totalEntries = new AtomicLong(allUsers.size());
         final AtomicLong processedEntries = new AtomicLong(0);
 
@@ -425,7 +424,7 @@ public class GenerateProfilesCommand extends ESCommand {
     }
 
     private void conflateGithubData() {
-        GlobalData.allUsers.entrySet().parallelStream().forEach(entry -> {
+        HackClubUser.getAllUsers().entrySet().parallelStream().forEach(entry -> {
             HackClubUser user = entry.getValue();
             String githubUsername = user.getGithubUsername();
             if (StringUtils.isNotEmpty(githubUsername)) {
@@ -436,14 +435,14 @@ public class GenerateProfilesCommand extends ESCommand {
 
     private void writeUsersToES(ElasticsearchClient esClient) {
         // TODO: Batch writes are much faster
-        GlobalData.allUsers.forEach((userId, hackClubUser) -> {
+        HackClubUser.getAllUsers().forEach((userId, hackClubUser) -> {
             try {
                 esClient.index(i -> i
                         .index(esIndex)
-                        .id(hackClubUser.getSlackUserId())
+                        .id(hackClubUser.getRootId())
                         .document(hackClubUser));
             } catch (Throwable t) {
-                System.out.printf("Warning - %s", t.getMessage().substring(0, 20));
+                System.out.printf("Warning - %s%n", t.getMessage().substring(0, 50));
                 /*
                 t.printStackTrace();
                 System.out.println(String.format("Issue writing user %s (%s) to ES - %s", userId, hackClubUser.getFullRealName(), t.getMessage()));
@@ -471,7 +470,7 @@ public class GenerateProfilesCommand extends ESCommand {
         @Override
         public String bucket(ChannelEvent entity) {
             String userId = entity.getUser();
-            if (!GlobalData.allUsers.containsKey(userId)) {
+            if (!HackClubUser.getAllUsers().containsKey(userId)) {
                 return null;
             }
             return userId;

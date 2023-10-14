@@ -1,10 +1,8 @@
 package com.hackclub.clubs.models;
 
 import com.hackclub.clubs.GlobalData;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -68,12 +66,12 @@ public class ChannelEvent {
     }
 
     public void onComplete() {
-        if (!GlobalData.allUsers.containsKey(user)) {
+        if (!HackClubUser.getAllUsers().containsKey(user)) {
             ignoredAccounts.put(user, true);
             return;
         }
 
-        GlobalData.allUsers.get(user).onSlackChatMessageProcessed(this);
+        HackClubUser.getAllUsers().get(user).onSlackChatMessageProcessed(this);
     }
 
     private void createTokens(String text) {

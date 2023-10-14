@@ -7,6 +7,8 @@ import org.apache.commons.text.similarity.LevenshteinDistance;
 
 import java.io.*;
 import java.net.URL;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -103,5 +105,21 @@ public class Utils {
     public static String safeToLower(String email) {
         if (email == null) return null;
         return email.toLowerCase();
+    }
+
+    public static String sanitizeDate(String birthday) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            LocalDate.parse(birthday, formatter);
+            return birthday;
+        } catch (Throwable t) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                LocalDate.parse(birthday, formatter);
+                return birthday;
+            } catch (Throwable t2) {
+                return null;
+            }
+        }
     }
 }
