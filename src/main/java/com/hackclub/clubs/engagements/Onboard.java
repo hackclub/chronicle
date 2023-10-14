@@ -1,11 +1,8 @@
 package com.hackclub.clubs.engagements;
 
-import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
-import com.hackclub.clubs.models.engagements.BlotEngagement;
 import com.hackclub.clubs.models.engagements.OnboardEngagement;
 import com.hackclub.common.Utils;
-import com.hackclub.common.conflation.MatchResult;
 import com.hackclub.common.conflation.MatchScorer;
 import com.hackclub.common.conflation.Matcher;
 import com.hackclub.common.elasticsearch.ESUtils;
@@ -19,15 +16,18 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 public class Onboard {
     private static String[] columns = "Full Name,Email,Proof of High School Enrollment,GitHub handle,Country,Status,Commented on Github? ,On HCB? ,Birthdate,1st line of shipping address,Zip/Postal code of shipping address,2nd line of shipping address,City (shipping address),State,Referral category,How did you hear about OnBoard?,Created,Is this the first PCB you've made?".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
-        HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
+        HashSet<HackClubUser> hackClubUsers = new HashSet<>(HackClubUser.getAllUsers().values());
         HashSet<OnboardEngagement> registrations = load(uri);
-        Set<MatchResult<OnboardEngagement, HackClubUser>> results = new Matcher<>("Onboard engagements -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setOnboardEngagement(result.getFrom()));
+        Matcher<OnboardEngagement, HackClubUser> matcher = new Matcher<>("Onboard engagements -> Hack Clubbers", registrations, hackClubUsers, scorer);
+        matcher.getResults().forEach(result -> result.getTo().setOnboardEngagement(result.getFrom()));
+        matcher.getUnmatchedFrom().forEach(onboardEngagement -> {
+            HackClubUser newUser = new HackClubUser("onboard-" + onboardEngagement.getEmail());
+            newUser.setOnboardEngagement(onboardEngagement);
+        });
     }
 
     private static HashSet<OnboardEngagement> load(URI uri) throws IOException, CsvValidationException {

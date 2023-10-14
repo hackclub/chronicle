@@ -1,11 +1,8 @@
 package com.hackclub.clubs.engagements;
 
-import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
-import com.hackclub.clubs.models.engagements.BlotEngagement;
 import com.hackclub.clubs.models.engagements.SprigEngagement;
 import com.hackclub.common.Utils;
-import com.hackclub.common.conflation.MatchResult;
 import com.hackclub.common.conflation.MatchScorer;
 import com.hackclub.common.conflation.Matcher;
 import com.hackclub.common.elasticsearch.ESUtils;
@@ -20,15 +17,21 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 public class Sprig {
     private static String[] columns = "GitHub Username,Submitted AT,Pull Request,Email,Proof of Student,Birthday,Authentication ID,Name,Address line 1,Address line 2,City,State or Province,Zip,Country,Phone (optional),Hack Club Slack ID (optional),Color,In a club?,Sprig Status,Club name,Sprig seeds mailed?,How did you hear about Sprig?,Address Formatted,Status,Notes,Tracking,Carrier,Tracking Base Link,Tracking Emailed,Referral Source,Age (years)".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
-        HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
+        HashSet<HackClubUser> hackClubUsers = new HashSet<>(HackClubUser.getAllUsers().values());
         HashSet<SprigEngagement> registrations = load(uri);
-        Set<MatchResult<SprigEngagement, HackClubUser>> results = new Matcher<>("Sprig engagements -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setSprigEngagement(result.getFrom()));
+        Matcher<SprigEngagement, HackClubUser> matcher = new Matcher<>("Sprig engagements -> Hack Clubbers", registrations, hackClubUsers, scorer);
+
+        System.out.printf("matches: %d unmatchedFrom: %d%n", matcher.getResults().size(), matcher.getUnmatchedFrom().size());
+        matcher.getResults().forEach(result -> result.getTo().setSprigEngagement(result.getFrom()));
+        matcher.getUnmatchedFrom().forEach(sprigEngagement -> {
+            String rootId = String.format("sprig-email-%s-slackid-%s", sprigEngagement.getEmail(), sprigEngagement.getSlackId());
+            HackClubUser newUser = new HackClubUser(rootId);
+            newUser.setSprigEngagement(sprigEngagement);
+        });
     }
 
     private static HashSet<SprigEngagement> load(URI uri) throws IOException, CsvValidationException {

@@ -1,9 +1,7 @@
 package com.hackclub.clubs.events;
 
-import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
 import com.hackclub.clubs.models.event.AngelhacksRegistration;
-import com.hackclub.clubs.models.event.AssembleRegistration;
 import com.hackclub.common.Utils;
 import com.hackclub.common.conflation.MatchResult;
 import com.hackclub.common.conflation.MatchScorer;
@@ -24,10 +22,15 @@ import java.util.Set;
 public class Angelhacks {
     private static String[] columns = "Name,Email,Phone number,School,Grade,Pronouns,T-shirt size,Duration,Skill Level,Game experience,Goals,Helping,Source,Waivers Done,Added to Postal,Checked in,Checked out".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
-        HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
+        HashSet<HackClubUser> hackClubUsers = new HashSet<>(HackClubUser.getAllUsers().values());
         HashSet<AngelhacksRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<AngelhacksRegistration, HackClubUser>> results = new Matcher<>("Angelhacks attendance -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setAngelhacksRegistration(result.getFrom()));
+        Matcher<AngelhacksRegistration, HackClubUser> matcher = new Matcher<>("Angelhacks attendance -> Hack Clubbers", registrations, hackClubUsers, scorer);
+        matcher.getResults().forEach(result -> result.getTo().setAngelhacksRegistration(result.getFrom()));
+        matcher.getUnmatchedFrom().forEach(angelhacksRegistration -> {
+            String rootId = String.format("angelhacks-email-%s-school-%s", angelhacksRegistration.getEmail(), angelhacksRegistration.getSchool());
+            HackClubUser newUser = new HackClubUser(rootId);
+            newUser.setAngelhacksRegistration(angelhacksRegistration);
+        });
     }
 
     private static HashSet<AngelhacksRegistration> loadRegistrations(URI uri) throws IOException, CsvValidationException {

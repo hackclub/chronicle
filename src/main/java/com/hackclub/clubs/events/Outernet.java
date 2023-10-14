@@ -1,6 +1,5 @@
 package com.hackclub.clubs.events;
 
-import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
 import com.hackclub.clubs.models.event.OuternetRegistration;
 import com.hackclub.common.Utils;
@@ -23,10 +22,15 @@ import java.util.Set;
 public class Outernet {
     private static String[] columns = "ID,Name,Club Leader?,Workshop / Lightning Talk Focus,Email,Pronouns,Birthday,T-Shirt Size,Travel,Dietary Restrictions,Parent's Name,Parent's Email,GitHub,Example Project,Curiosity,Guild Interest,Guild Focus,ranking,Workshop / Lightning Talk Interest,Stipend Record,Cool ideas,Shuttle Record,migration,workshop status,Waiver Sent,Created,Stipend Approved,Pod,Checked In?,Notes,Contact's Phone number,Checked out,Accepted Stipends".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
-        HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
+        HashSet<HackClubUser> hackClubUsers = new HashSet<>(HackClubUser.getAllUsers().values());
         HashSet<OuternetRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<OuternetRegistration, HackClubUser>> results = new Matcher<>("Outernet registrations -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setOuternetRegistration(result.getFrom()));
+        Matcher<OuternetRegistration, HackClubUser> matcher = new Matcher<>("Outernet registrations -> Hack Clubbers", registrations, hackClubUsers, scorer);
+        matcher.getResults().forEach(result -> result.getTo().setOuternetRegistration(result.getFrom()));
+        matcher.getUnmatchedFrom().forEach(outernetRegistration -> {
+            String rootId = String.format("outernet-email-%s", outernetRegistration.getEmail());
+            HackClubUser newUser = new HackClubUser(rootId);
+            newUser.setOuternetRegistration(outernetRegistration);
+        });
     }
 
     private static HashSet<OuternetRegistration> loadRegistrations(URI uri) throws IOException, CsvValidationException {

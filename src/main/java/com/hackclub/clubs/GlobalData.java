@@ -1,8 +1,5 @@
 package com.hackclub.clubs;
 
-import com.hackclub.clubs.models.HackClubUser;
-
-import java.util.HashMap;
 import java.util.HashSet;
 
 /**
@@ -10,7 +7,6 @@ import java.util.HashSet;
  */
 public class GlobalData {
     public static HashSet<String> staffUserIds = new HashSet<>();
-    public static HashMap<String, HackClubUser> allUsers = new HashMap<>();
     public static HashSet<String> validTokens = new HashSet<>();
     static {
         validTokens.add("rust");

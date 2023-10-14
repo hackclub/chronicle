@@ -1,9 +1,7 @@
 package com.hackclub.clubs.events;
 
-import com.hackclub.clubs.GlobalData;
 import com.hackclub.clubs.models.HackClubUser;
 import com.hackclub.clubs.models.event.AssembleRegistration;
-import com.hackclub.clubs.models.event.OuternetRegistration;
 import com.hackclub.common.Utils;
 import com.hackclub.common.conflation.MatchResult;
 import com.hackclub.common.conflation.MatchScorer;
@@ -24,10 +22,15 @@ import java.util.Set;
 public class Assemble {
     private static String[] columns = "//ID,Email,Log In Path,Full Name,Your Nearest Airport,Birthday,Vaccinated?,\"If you're not vaccinated, please explain why:\",Do you require a letter for visa applications?,Travel Stipend,Dietary Restrictions,\"At the moment, what is your estimated travel cost?\",Travel Stipend Cost INT,What would a travel stipend mean to you?,Skill Level,Would you be interested in hosting a workshop session at Assemble?,Workshop Topic,Shirt,Parent Name,Parent Email,Tabs or Spaces,Pineapple on Pizza,Submission Timestamp,Voted For,Team Notes,Stipend,Decision:,Follow Up,Estimated Cost(Hugo),Amount of Votes,Name (For Prefill),Follow Up (For Prefill),Vote *against*,18?,Serious Alum?,Pronouns,Password Code,Send 2 Weeks Out Email,Waiver,Freedom,Off Waitlist,Vaccinated,waiver_type,Send Wed 3 Email,Created at".split(",");
     public static void conflate(URI uri) throws CsvValidationException, IOException {
-        HashSet<HackClubUser> hackClubUsers = new HashSet<>(GlobalData.allUsers.values());
+        HashSet<HackClubUser> hackClubUsers = new HashSet<>(HackClubUser.getAllUsers().values());
         HashSet<AssembleRegistration> registrations = loadRegistrations(uri);
-        Set<MatchResult<AssembleRegistration, HackClubUser>> results = new Matcher<>("Assemble attendance -> Hack Clubbers", registrations, hackClubUsers, scorer).getResults();
-        results.forEach(result -> result.getTo().setAssembleRegistration(result.getFrom()));
+        Matcher<AssembleRegistration, HackClubUser> matcher = new Matcher<>("Assemble attendance -> Hack Clubbers", registrations, hackClubUsers, scorer);
+        matcher.getResults().forEach(result -> result.getTo().setAssembleRegistration(result.getFrom()));
+        matcher.getUnmatchedFrom().forEach(assembleRegistration -> {
+            String rootId = String.format("assemble-email-%s", assembleRegistration.getEmail());
+            HackClubUser newUser = new HackClubUser(rootId);
+            newUser.setAssembleRegistration(assembleRegistration);
+        });
     }
 
     private static HashSet<AssembleRegistration> loadRegistrations(URI uri) throws IOException, CsvValidationException {

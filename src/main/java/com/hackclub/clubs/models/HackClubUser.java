@@ -14,86 +14,98 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Represents the data that we want to persist in ElasticSearch
  */
 public class HackClubUser {
-    private String slackUserName;
-    private String slackHandle;
-    private String email;
-    private String status;
-    private String slackUserId;
-    private String slackDisplayName;
-    private long userIndex;
+    private static HashMap<String, HackClubUser> allUsers = new HashMap<>();
+
+    /**
+     * Fields we intend on serializing to JSON - BEGIN
+     */
+    private String rootId = null;
+    private String slackUserName = null;
+    private String slackHandle = null;
+    private String email = null;
+    private String status = null;
+    private String slackUserId = null;
+    private String slackDisplayName = null;
     private LocalDate earliestPostDate = null;
     private LocalDate latestPostDate = null;
-    private boolean isStaff = false;
     private String githubUsername = null;
     private String timezone = null;
     private Integer maxScrapbookStreaks = null;
     private String pronouns = null;
     private String website = null;
-    private boolean isScrapbookUser = false;
-    private boolean isOrWasLeader = false;
-    private boolean isActiveLeader = false;
-    private String fullRealName;
-    private String birthday;
-    private String schoolYear;
-    private String phoneNumber;
-    private String address;
-    private String country;
-    private String gender = "Unknown";
-    private String ethnicity = "Unknown";
-    private String prettyAddress;
-    private String twitter;
-    private Integer birthYear;
-    private Long lastSlackActivity = null;
-    private boolean isAlumni = false;
+    private String fullRealName = null;
+    private String birthday = null;
+    private String schoolYear = null;
+    private String phoneNumber = null;
+    private String address = null;
+    private String country = null;
+    private String gender = null;
+    private String ethnicity = null;
+    private String prettyAddress = null;
+    private String twitter = null;
+    private Boolean isStaff = false;
+    private Boolean isAlumni = false;
+    private Boolean hasGeo = false;
+    private Boolean isScrapbookUser = false;
+    private Boolean isOrWasLeader = false;
+    private Boolean isActiveLeader = false;
     private Integer age = null;
+    private Integer birthYear = null;
+    private Long lastSlackActivity = null;
     private GeoPoint geolocation = null;
-    private boolean hasGeo = false;
-    private static ConcurrentHashMap<Long, HackClubUser> indexToUserMapping = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<String, Long> slackUserIdToIndexMapping = new ConcurrentHashMap<>();
-    private static AtomicLong userIdMax = new AtomicLong(0);
     private Map<String, Integer> keywords = new HashMap<>();
     private Optional<SlackInfo> slackInfo = Optional.empty();
     private GithubInfo githubInfo = new GithubInfo();
     private Map<String, EventRegistration> eventAttendance = new HashMap<>();
     private Map<String, Engagement> engagements = new HashMap<>();
+    /**
+     * Fields we intend on serializing to JSON - END
+     */
 
-    public HackClubUser(String slackUserId, String slackHandle, String slackUserName, String email, String status, String slackDisplayName) {
+    // Constructor
+    public HackClubUser(String rootId) {
+        this.rootId = rootId;
+        getAllUsers().put(rootId, this);
+    }
+
+    //username,email,status,billing-active,has-2fa,has-sso,userid,fullname,displayname,expiration-timestamp
+    public static HackClubUser fromSlackCsv(String[] parts) {
+        String slackUserId = parts[6];
+        HackClubUser newUser = new HackClubUser(slackUserId);
+        newUser.setSlackData(slackUserId, parts[8], parts[0], parts[1], parts[2], parts[7]);
+        return newUser;
+    }
+
+    public static HashMap<String, HackClubUser> getAllUsers() {
+        return allUsers;
+    }
+
+    public static Optional<HackClubUser> get(String rootId) {
+        return Optional.ofNullable(allUsers.getOrDefault(rootId, null));
+    }
+
+    public void setSlackData(String slackUserId, String slackHandle, String slackUserName, String email, String status, String slackDisplayName) {
         this.slackUserId = slackUserId;
         this.slackHandle = slackHandle.length() == 0 ? null : slackHandle;
         this.slackUserName = slackUserName;
         this.email = email;
         this.status = status;
         this.slackDisplayName = slackDisplayName;
-        this.userIndex = userIdMax.getAndIncrement();
-        indexToUserMapping.put(this.userIndex, this);
-        slackUserIdToIndexMapping.put(slackUserId, this.userIndex);
     }
 
-    //username,email,status,billing-active,has-2fa,has-sso,userid,fullname,displayname,expiration-timestamp
-    public static HackClubUser fromCsv(String[] parts) {
-        return new HackClubUser(parts[6], parts[8], parts[0], parts[1], parts[2], parts[7]);
-    }
-
-    public static Optional<HackClubUser> fromUserIndex(Long userIndex) {
-        return Optional.ofNullable(indexToUserMapping.get(userIndex));
-    }
-
-    public static Optional<HackClubUser> fromUserId(String userId) {
-        if (userId == null)
+    public static Optional<HackClubUser> getWithRootId(String rootId) {
+        if (rootId == null)
             return Optional.empty();
 
-        return Optional.ofNullable(slackUserIdToIndexMapping.get(userId)).flatMap(index -> Optional.ofNullable(indexToUserMapping.get(index)));
+        return Optional.ofNullable(getAllUsers().getOrDefault(rootId, null));
     }
 
     public String getSlackUserName() {
@@ -170,7 +182,7 @@ public class HackClubUser {
             isOrWasLeader = leaderApplicationInfo.isOrWasLeader();
             fullRealName = leaderApplicationInfo.getFullName();
 
-            birthday = sanitizeDate(leaderApplicationInfo.getBirthday());
+            birthday = Utils.sanitizeDate(leaderApplicationInfo.getBirthday());
             schoolYear = leaderApplicationInfo.getSchoolYear();
             phoneNumber = leaderApplicationInfo.getPhoneNumber();
             address = leaderApplicationInfo.getAddress();
@@ -194,16 +206,6 @@ public class HackClubUser {
             isActiveLeader = StringUtils.equals(clubInfo.getStatus(), "active");
             if (StringUtils.isEmpty(prettyAddress) && !StringUtils.isEmpty(clubInfo.getClubAddress()))
                 prettyAddress = clubInfo.getClubAddress();
-        }
-    }
-
-    private String sanitizeDate(String birthday) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            LocalDate.parse(birthday, formatter);
-            return birthday;
-        } catch (Throwable t) {
-            return null;
         }
     }
 
@@ -302,7 +304,7 @@ public class HackClubUser {
     }
 
     public void setBirthday(String birthday) {
-        this.birthday = birthday;
+        this.birthday = Utils.sanitizeDate(birthday);
     }
 
     public String getSchoolYear() {
@@ -438,7 +440,6 @@ public class HackClubUser {
                 ", status='" + status + '\'' +
                 ", slackUserId='" + slackUserId + '\'' +
                 ", slackDisplayName='" + slackDisplayName + '\'' +
-                ", userIndex=" + userIndex +
                 ", earliestPostDate=" + earliestPostDate +
                 ", latestPostDate=" + latestPostDate +
                 ", isStaff=" + isStaff +
@@ -479,6 +480,10 @@ public class HackClubUser {
         if (StringUtils.isEmpty(githubUsername)) {
             githubUsername = Utils.getLastPathInUrl(reg.getGithub());
         }
+
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getName();
+        if (StringUtils.isEmpty(githubUsername)) githubUsername = Utils.getLastPathInUrl(reg.getGithub());
     }
 
     public void setAssembleRegistration(AssembleRegistration reg) {
@@ -493,6 +498,9 @@ public class HackClubUser {
             }
         }
         eventAttendance.put("assemble", data);
+
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getFullName();
     }
 
     public void setAngelhacksRegistration(AngelhacksRegistration reg) {
@@ -500,8 +508,10 @@ public class HackClubUser {
         data.setAttended(reg.isCheckedIn());
         data.setRsvped(true);
         data.setStipendRequested(false);
-
         eventAttendance.put("angelhacks", data);
+
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getName();
     }
 
     public void setBlotEngagement(BlotEngagement reg) {
@@ -509,6 +519,12 @@ public class HackClubUser {
         data.setImpressed(true);
         data.setRewarded(StringUtils.equals(reg.getStatus(), "Shipped"));
         engagements.put("blot", data);
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getName();
+        if (StringUtils.isEmpty(slackUserId)) slackUserId = reg.getSlackId();
+        String blotAddress = String.format("%s, %s, %s", reg.getCity(), reg.getState(), reg.getCountry());
+        if (StringUtils.isEmpty(address)) address = blotAddress;
+        if (StringUtils.isEmpty(prettyAddress)) prettyAddress = blotAddress;
     }
 
     public void setSprigEngagement(SprigEngagement reg) {
@@ -516,6 +532,13 @@ public class HackClubUser {
         data.setImpressed(true);
         data.setRewarded(StringUtils.equals(reg.getStatus(), "Shipped"));
         engagements.put("sprig", data);
+
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        String sprigAddress = String.format("%s, %s, %s", reg.getCity(), reg.getState(), reg.getCountry());
+        if (StringUtils.isEmpty(address)) address = sprigAddress;
+        if (StringUtils.isEmpty(prettyAddress)) prettyAddress = sprigAddress;
+        if (StringUtils.isEmpty(slackUserId)) slackUserId = reg.getSlackId();
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getName();
     }
 
     public void setOnboardEngagement(OnboardEngagement reg) {
@@ -523,6 +546,12 @@ public class HackClubUser {
         data.setImpressed(true);
         data.setRewarded(StringUtils.equals(reg.getStatus(), "Approved"));
         engagements.put("onboard", data);
+        String onboardAddress = String.format("%s, %s", reg.getCity(), reg.getState());
+        if (StringUtils.isEmpty(email)) email = reg.getEmail();
+        if (StringUtils.isEmpty(address)) address = onboardAddress;
+        if (StringUtils.isEmpty(prettyAddress)) prettyAddress = onboardAddress;
+        if (StringUtils.isEmpty(fullRealName)) fullRealName = reg.getFullName();
+        if (StringUtils.isEmpty(birthday)) birthday = Utils.sanitizeDate(reg.getBirthDate());
     }
 
     public Optional<SlackInfo> getSlackInfo() {
@@ -580,4 +609,12 @@ public class HackClubUser {
     public void setEngagements(Map<String, Engagement> engagements) {
         this.engagements = engagements;
     }
+    public String getRootId() {
+        return rootId;
+    }
+
+    public void setRootId(String rootId) {
+        this.rootId = rootId;
+    }
+
 }

@@ -1,5 +1,6 @@
 package com.hackclub.common.conflation;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -10,6 +11,8 @@ import java.util.stream.Collectors;
  */
 public class Matcher <FromType, ToType> {
     private Set<MatchResult<FromType, ToType>> results;
+    private Set<FromType> unmatchedFrom = new HashSet<>();
+    private Set<ToType> unmatchedTo = new HashSet<>();;
     private int fromSize;
     private int toSize;
 
@@ -33,6 +36,9 @@ public class Matcher <FromType, ToType> {
                 )
                 .flatMap(sortedResults -> sortedResults.findFirst().stream())
                 .collect(Collectors.toSet());
+
+        unmatchedFrom.addAll(fromSet.stream().filter(f -> !resultSetContainsFrom(f, results)).collect(Collectors.toSet()));
+        unmatchedTo.addAll(toSet.stream().filter(t -> !resultSetContainsTo(t, results)).collect(Collectors.toSet()));
     }
 
     private int compareResults(MatchResult<FromType, ToType> m1, MatchResult<FromType, ToType> m2) {
@@ -50,8 +56,8 @@ public class Matcher <FromType, ToType> {
     public void calculateStatistics(String matcherName, Set<FromType> fromSet, Set<ToType> toSet, Set<MatchResult<FromType, ToType>> resultSet) {
         double fromSize = fromSet.size();
         double toSize = toSet.size();
-        double fromsContainedInResults = fromSet.stream().filter(f -> resultSetContainsFrom(f, resultSet)).count();
-        double tosContainedInResults = toSet.stream().filter(t -> resultSetContainsTo(t, resultSet)).count();
+        double fromsContainedInResults = fromSet.size() - unmatchedFrom.size();
+        double tosContainedInResults = toSet.size() - unmatchedTo.size();
         double totalResults = resultSet.size();
 
         System.out.printf("RUNNING MATCHER \"%s\"\r\n", matcherName);
@@ -63,5 +69,12 @@ public class Matcher <FromType, ToType> {
     }
     private boolean resultSetContainsTo(ToType t, Set<MatchResult<FromType, ToType>> resultSet) {
         return resultSet.stream().anyMatch(r -> r.getTo() == t);
+    }
+    public Set<FromType> getUnmatchedFrom() {
+        return unmatchedFrom;
+    }
+
+    public Set<ToType> getUnmatchedTo() {
+        return unmatchedTo;
     }
 }

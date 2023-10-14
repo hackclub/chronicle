@@ -84,6 +84,9 @@ public class SlackUtils {
     }
 
     private static void cacheSlackData(String slackUserId, Optional<SlackInfo> ret) {
+        if (slackUserId == null)
+            return;
+
         try {
             if (ret.isPresent()) {
                 Cache.save(slackUserId, new ObjectMapper().writeValueAsString(ret.get()));
@@ -94,6 +97,8 @@ public class SlackUtils {
     }
 
     private static Optional<SlackInfo> getCachedSlackInfo(String slackUserId) {
+        if (slackUserId == null) return Optional.empty();
+
         Optional<String> slackData = Cache.load(slackUserId);
         if (slackData.isPresent()) {
             try {

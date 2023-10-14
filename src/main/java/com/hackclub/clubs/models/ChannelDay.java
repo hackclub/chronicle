@@ -88,7 +88,7 @@ public class ChannelDay {
     }
 
     Stream<HackClubUser> allPostingUsers() {
-        return Arrays.stream(entries).flatMap(entry -> HackClubUser.fromUserId(entry.getUser()).stream());
+        return Arrays.stream(entries).flatMap(entry -> HackClubUser.getWithRootId(entry.getUser()).stream());
     }
 
     public LocalDate getLocalDate() {
