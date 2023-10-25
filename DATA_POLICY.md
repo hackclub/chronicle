@@ -1,7 +1,7 @@
 Hack Club Data Policy
 =====================
 
-Right now, at HQ, there are a bajillion different places where data is stored. Sprig saves game files in S3, HQ event registrations are spread across Airtable, Google Sheets, and Postgres DBs, club applications are in a separate Airtable DB, Slack activity is in the Slack analytics dashboard, there is stuff all over GitHub, Hack Club Bank has its own separate Airtable DBs and Postgres, and a bunch more places too.
+Right now, at HQ, there are a bajillion different places where data is stored. Sprig saves game files in S3, HQ event registrations are spread across Airtable, Google Sheets, and Postgres DBs, club applications are in a separate Airtable DB, Slack activity is in the Slack analytics dashboard, there is stuff all over GitHub, HCB has its own separate Airtable DBs and Postgres, and a bunch more places too.
 
 This has made it very difficult to answer basic questions like: "who are active Hack Clubbers within driving distance of AngelHacks?" or "who came to Epoch and has contributed to Hack Club repos on GitHub?".
 
@@ -36,11 +36,11 @@ Some examples of what "public data" is and isn't:
 
 Notable exceptions / caveats
 
--   There are certain systems (for example, Hack Club Bank) that may require long-term logging of IP addresses and other metadata for purposes of security / fraud detection & deterrence / auditing.  This data is and will not be used for marketing purposes, nor would it be conflated with other outside datasets such as what Chronicle uses, but instead is purely intended to ensure engineering stability and compliance with financial standards / laws.
+-   There are certain systems (for example, HCB) that may require long-term logging of IP addresses and other metadata for purposes of security / fraud detection & deterrence / auditing.  This data is and will not be used for marketing purposes, nor would it be conflated with other outside datasets such as what Chronicle uses, but instead is purely intended to ensure engineering stability and compliance with financial standards / laws.
 
 Other aspects of data policy:
 
--   Outside of core operations (ex. we have to give emails to Stripe for people to get Hack Club Bank cards mailed to them, or we have to give your email to GitHub to invite you to a HC GitHub repo), Hack Club HQ won't share data with external parties without people opting-in first. Ex. If people want invites for early access to GitHub's new code search, we will ask who wants invites first before sharing emails.
+-   Outside of core operations (ex. we have to give emails to Stripe for people to get HCB cards mailed to them, or we have to give your email to GitHub to invite you to a HC GitHub repo), Hack Club HQ won't share data with external parties without people opting-in first. Ex. If people want invites for early access to GitHub's new code search, we will ask who wants invites first before sharing emails.
 
 -   Hack Club HQ won't sell data to anyone
 
